@@ -55,18 +55,37 @@ class Reacter:
       default=None
     )
 
+    p.add_option('-F', '--header',
+      action='append',
+      dest='send_message_headers',
+      help='A header to add to an outgoing message',
+      metavar='NAME VALUE',
+      default=None,
+      nargs=2
+    )
+
     (self.opts, self.args) = p.parse_args()
 
     self.agents = Util.parse_agents(self.opts.agents)
+
+  # handle multiple -F arguments
+    headers = self.opts.send_message_headers
+    self.opts.send_message_headers = {}
+    
+    if headers:
+      for h in headers:
+        self.opts.send_message_headers[h[0]] = h[1]
+    
     (self.stomp_host, self.stomp_port) = Util.parse_destination(self.opts.stomp_server)
 
   def initialize_daemon(self):
-    pid = open(self.opts.pidfile, 'w')
-    pid.write(str(os.getpid())+'\n')
-    pid.close()
+    # pid = open(self.opts.pidfile, 'w')
+    # pid.write(str(os.getpid())+'\n')
+    # pid.close()
+    return None
 
-  def send(self, message):
-    self.queue.send(message)
+  def send(self, message, headers=None):
+    self.queue.send(message, headers)
 
   def start(self):
   # setup daemon-specific things
@@ -85,7 +104,8 @@ class Reacter:
       port=self.stomp_port):
 
       if self.opts.send_message:
-        self.send(reacter.opts.send_message)
+        self.send(self.opts.send_message, self.opts.send_message_headers)
+
       else:
         print "Starting..."
         print "Connected to %s:%s" % (self.stomp_host, self.opts.queue)

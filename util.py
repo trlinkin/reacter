@@ -25,3 +25,11 @@ class Util:
   @classmethod
   def parse_agents(self, agents):
     return agents.split(',')
+
+  @classmethod
+  def import_class(cls):
+    (_module, _class) = cls.rsplit('.', 2)
+
+  @classmethod
+  def prepare_config_key(key):
+    return key
