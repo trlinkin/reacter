@@ -2,6 +2,8 @@
 thresholds:
   sources:
     default:
-      system.time:
-        warn:
-          max: 1
+      dummy.counter:
+        critical:
+          max: 90
+        warning:
+          max: 75

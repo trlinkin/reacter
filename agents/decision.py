@@ -3,6 +3,7 @@
 #
 import re
 import yaml
+import zlib
 from agent import Agent, Message
 
 # --8<----------------------------------------------------------------------8<--
@@ -26,12 +27,11 @@ class DecisionAgent(Agent):
     self.observations = {}
     self.config()
 
-
   def config(self):     
     #if not threshold_file:
     #  raise Exception('Must specify a ThresholdFile configuration file (yaml)')
     try:
-      self.threshold_file = './reacter.yaml'
+      self.threshold_file = '/home/ghetzel/src/github/outbrain/reacter/agents/reacter.yaml'
       self.yaml = yaml.safe_load(open(self.threshold_file, 'r'))
     except IOError:
       self.yaml = {
@@ -57,7 +57,8 @@ class DecisionAgent(Agent):
 
   # for each applicable rule
     for rule in rules.keys():
-      add_observation(rule, message)
+      observation = self.add_observation(rules[rule], message)
+      print observation
 
 
   def add_observation(self, rule, message):
@@ -66,72 +67,83 @@ class DecisionAgent(Agent):
     value  = message.data['value']
 
   # create data structures if they do not exist
-    if not self.observations[source]:
+    if not self.observations.get(source):
       self.observations[source] = {}
       
-    if not self.observations[source][metric]:
-      self.observations[source][metric] = {}
+    if not self.observations[source].get(metric):
+      self.observations[source][metric] = {
+        'state':        None,
+        'check_count':  0,
+        'breach_count': 0,
+        'clear_count':  0
+      }
 
     observations = self.observations[source][metric]
     hits = rule.get('hits') or 1
 
   # do value check
-    state, comparison = get_state(value, rule)
+    state, comparison = self.get_state(value, rule)
 
-  # further adjust hits for the specific state we're in
-    try:
-      hits = rule['states'][self.valid_states[state]]['hits']
-    except Exception:
-      pass
+    if comparison:
+    # further adjust hits for the specific state we're in
+      try:
+        hits = rule['states'][state]['hits']
+      except Exception:
+        pass
 
-  # set last violation state
-    observations['last_state'] = observations['state']
-    observations['state'] = state
+    # set last violation state
+      observations['last_state'] = observations.get('state')
+      observations['state'] = state
 
-  # increment checks
-    observations['check_count'] += 1
+    # not a good plan....
+      observations['rule_id'] = abs((zlib.crc32('%s-%s-%s-%s' % (source, metric, state, comparison)) & 0xffffffff))
 
-  # determine current violation state
-    if state == 0:
-      observations['breach_count'] = 0
-      observations['clear_count'] += 1
+    # increment checks
+      observations['check_count'] += 1
 
-    # only succeed after n passing checks
-      if observations['clear_count'] >= hits:
-        observations['clear_count'] = 0
-        observations['in_violation'] = False
-        #print_struct(observations)
-
-    else:
-      observations['breach_count'] += 1
-      observations['clear_count'] = 0
-
-    # only violate every n breaches
-      if observations['breach_count'] >= hits:
+    # determine current violation state
+      if state == 'okay':
         observations['breach_count'] = 0
-        observations['in_violation'] = True
-        #print_struct(observations)
+        observations['clear_count'] += 1
 
-    return observations
+      # only succeed after n passing checks
+        if observations['clear_count'] >= hits:
+          observations['clear_count'] = 0
+          observations['in_violation'] = False
+          #print_struct(observations)
+
+      else:
+        observations['breach_count'] += 1
+        observations['clear_count'] = 0
+
+      # only violate every n breaches
+        if observations['breach_count'] >= hits:
+          observations['breach_count'] = 0
+          observations['in_violation'] = True
+          #print_struct(observations)
+
+      return observations
+
+    return None
 
   def get_state(self, value, rule):
   # for all non-okay states (ordered by most-to-least severe)
-    for state_index, state in enumerate(self.valid_states[::-1][:-1]):
+    for state in self.valid_states[::-1][:-1]:
       state_rule = rule.get(state)
 
     # if a rule for this state exists...
       if state_rule:        
       # ...and value is above the 'max':
         if state_rule.get('max') and float(value) > float(state_rule.get('max')):
-          return (state_index, 'max')
+          return (state, 'max')
 
       # ...or equal to the 'is':
         elif state_rule.get('is') and float(value) == float(state_rule.get('is')):
-          return (state_index, 'equal')
+          return (state, 'is')
 
       # ...or less than the 'min':
-        elif state_rule.get('min') and float(value) > float(state_rule.get('min')):
-          return (state_index, 'min')
+        elif state_rule.get('min') and float(value) < float(state_rule.get('min')):
+          return (state, 'min')
 
     return (None,None)
 
