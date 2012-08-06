@@ -3,7 +3,7 @@
 #
 import re
 import yaml
-from agents import Agent, Message
+from agent import Agent, Message
 
 # --8<----------------------------------------------------------------------8<--
 # MESSAGE
@@ -26,14 +26,23 @@ class DecisionAgent(Agent):
     self.observations = {}
     self.config()
 
+
   def config(self):     
     #if not threshold_file:
     #  raise Exception('Must specify a ThresholdFile configuration file (yaml)')
-    self.threshold_file = './reacter.yaml'
-    self.yaml = yaml.safe_load(open(threshold_file, 'r'))
+    try:
+      self.threshold_file = './reacter.yaml'
+      self.yaml = yaml.safe_load(open(self.threshold_file, 'r'))
+    except IOError:
+      self.yaml = {
+        'thresholds': {
+          'sources': {}
+        }
+      }
 
   # TODO: set this from the config
-    self.valid_states = DEFAULT_STATES
+    self.valid_states = self.DEFAULT_STATES
+
 
   def received(self, message):
     sources = self.yaml['thresholds']['sources']
@@ -44,14 +53,14 @@ class DecisionAgent(Agent):
       if source == 'default' or re.match(source, message.data['source']):
         for rule in sources[source].keys():
           if re.match(rule, message.data['metric']):
-            rules[rule] = sources[source]][rule]
+            rules[rule] = sources[source][rule]
 
   # for each applicable rule
     for rule in rules.keys():
       add_observation(rule, message)
 
 
-  def add_observation(rule, message):
+  def add_observation(self, rule, message):
     source = message.data['source']
     metric = message.data['metric']
     value  = message.data['value']
@@ -63,13 +72,11 @@ class DecisionAgent(Agent):
     if not self.observations[source][metric]:
       self.observations[source][metric] = {}
 
-
     observations = self.observations[source][metric]
     hits = rule.get('hits') or 1
 
-
   # do value check
-    state, violation = get_state(value, rule)
+    state, comparison = get_state(value, rule)
 
   # further adjust hits for the specific state we're in
     try:
@@ -82,7 +89,7 @@ class DecisionAgent(Agent):
     observations['state'] = state
 
   # increment checks
-    observations['stats']['checks'] += 1
+    observations['check_count'] += 1
 
   # determine current violation state
     if state == 0:
@@ -93,7 +100,7 @@ class DecisionAgent(Agent):
       if observations['clear_count'] >= hits:
         observations['clear_count'] = 0
         observations['in_violation'] = False
-        perform_action(observations)
+        #print_struct(observations)
 
     else:
       observations['breach_count'] += 1
@@ -103,4 +110,30 @@ class DecisionAgent(Agent):
       if observations['breach_count'] >= hits:
         observations['breach_count'] = 0
         observations['in_violation'] = True
-        perform_action(observations)
+        #print_struct(observations)
+
+    return observations
+
+  def get_state(self, value, rule):
+  # for all non-okay states (ordered by most-to-least severe)
+    for state_index, state in enumerate(self.valid_states[::-1][:-1]):
+      state_rule = rule.get(state)
+
+    # if a rule for this state exists...
+      if state_rule:        
+      # ...and value is above the 'max':
+        if state_rule.get('max') and float(value) > float(state_rule.get('max')):
+          return (state_index, 'max')
+
+      # ...or equal to the 'is':
+        elif state_rule.get('is') and float(value) == float(state_rule.get('is')):
+          return (state_index, 'equal')
+
+      # ...or less than the 'min':
+        elif state_rule.get('min') and float(value) > float(state_rule.get('min')):
+          return (state_index, 'min')
+
+    return (None,None)
+
+  def print_struct(self, s, m , v, o):
+    print "%s/%s: %s %d B/C=%d/%d (%d)" % (s, m, o.data['state'].upper(), v, o['breach_count'], o['clear_count'], o['check_count'])

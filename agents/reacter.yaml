@@ -1,0 +1,7 @@
+---
+thresholds:
+  sources:
+    default:
+      system.time:
+        warn:
+          max: 1
