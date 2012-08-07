@@ -1,9 +1,15 @@
 ---
-thresholds:
-  sources:
-    default:
-      dummy.counter:
+sources:
+  all:
+    dummy.counter:
+      persistent: true
+
+      actions:
+        exec: /usr/local/bin/send_neon
+
+      when:
         critical:
-          max: 90
+          above: 90
+
         warning:
-          max: 75
+          above: 75

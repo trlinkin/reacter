@@ -4,7 +4,6 @@
 import os
 import sys
 import imp
-from string import capwords
 from socket import gethostname
 import stompy
 from util import Util
@@ -12,8 +11,10 @@ from util import Util
 class Agent(object):
   DEFAULT_QUEUE='/queue/monitoring/metrics'
   
-  def __init__(self):
-    self.agents = []
+  def __init__(self, name=None):
+    self.name = name
+    self.agents = {}
+    self.handlers = {}
 
   def add_agent(self, agent):
     path = sys.path
@@ -24,10 +25,11 @@ class Agent(object):
     try:
       (_file, _path, _description) = imp.find_module(agent, path)
       agent_module = imp.load_module(agent, _file, _path, _description)
-      agent_class = getattr(agent_module, capwords(agent,'_').replace('_','')+'Agent')
-      self.agents.append(agent_class())
+      agent_class = getattr(agent_module, Util.camelize(agent, suffix='Agent'))
+      self.agents[agent] = agent_class()
     finally:
       _file.close()
+
 
   def connect(self, host=Util.DEFAULT_HOSTNAME, port=Util.DEFAULT_PORT, username=None, password=None, queue=DEFAULT_QUEUE):
     self.queue_name = queue
@@ -67,7 +69,7 @@ class Agent(object):
   def dispatch_message(self, frame):
     #print "Message received, dispatching to agent(s): "
 
-    for agent in self.agents:
+    for name, agent in self.agents.items():
       agent.received(Message(frame))
 
 
@@ -87,7 +89,9 @@ class Message:
       'metric':      None,
       'value':       None,
       'threshold':   None,
-      'state':       None
+      'state':       None,
+      'comparison':  None,
+      'rule':        None
     }
 
     if frame:

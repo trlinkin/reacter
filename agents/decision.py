@@ -1,9 +1,11 @@
 #------------------------------------------------------------------------------#
 # DecisionAgent
 #
+import sys
 import re
 import yaml
 import zlib
+from util import Util
 from agent import Agent, Message
 
 # --8<----------------------------------------------------------------------8<--
@@ -35,9 +37,7 @@ class DecisionAgent(Agent):
       self.yaml = yaml.safe_load(open(self.threshold_file, 'r'))
     except IOError:
       self.yaml = {
-        'thresholds': {
-          'sources': {}
-        }
+        'sources': {}
       }
 
   # TODO: set this from the config
@@ -45,23 +45,22 @@ class DecisionAgent(Agent):
 
 
   def received(self, message):
-    sources = self.yaml['thresholds']['sources']
+    sources = self.yaml['sources']
     rules = {}
 
   # add all matching rules for all matching sources
     for source in sources.keys():
-      if source == 'default' or re.match(source, message.data['source']):
+      if source == 'all' or re.match(source, message.data['source']):
         for rule in sources[source].keys():
           if re.match(rule, message.data['metric']):
             rules[rule] = sources[source][rule]
 
   # for each applicable rule
     for rule in rules.keys():
-      observation = self.add_observation(rules[rule], message)
-      print observation
+      observation = self.evaluate_rule(rules[rule], message)
 
 
-  def add_observation(self, rule, message):
+  def evaluate_rule(self, rule, message):
     source = message.data['source']
     metric = message.data['metric']
     value  = message.data['value']
@@ -84,68 +83,113 @@ class DecisionAgent(Agent):
   # do value check
     state, comparison = self.get_state(value, rule)
 
-    if comparison:
-    # further adjust hits for the specific state we're in
-      try:
-        hits = rule['states'][state]['hits']
-      except Exception:
-        pass
+    message.data['state'] = state
+    message.data['comparison'] = comparison
 
-    # set last violation state
-      observations['last_state'] = observations.get('state')
-      observations['state'] = state
+  # further adjust hits for the specific state we're in
+    try:
+      message.data['threshold'] = float(rule['when'][state][comparison])
+      hits = rule['when'][state]['hits']
 
-    # not a good plan....
-      observations['rule_id'] = abs((zlib.crc32('%s-%s-%s-%s' % (source, metric, state, comparison)) & 0xffffffff))
+    except Exception:
+      pass
 
-    # increment checks
-      observations['check_count'] += 1
+  # set last violation state
+    observations['last_violation_state'] = observations.get('in_violation')
+    observations['state'] = state
 
-    # determine current violation state
-      if state == 'okay':
-        observations['breach_count'] = 0
-        observations['clear_count'] += 1
+  # not a good plan....
+    message.data['rule'] = abs((zlib.crc32('%s-%s-%s-%s' % (source, metric, state, comparison)) & 0xffffffff))
 
-      # only succeed after n passing checks
-        if observations['clear_count'] >= hits:
-          observations['clear_count'] = 0
-          observations['in_violation'] = False
-          #print_struct(observations)
+  # increment checks
+    observations['check_count'] += 1
 
-      else:
-        observations['breach_count'] += 1
+  # if state is okay...
+    if state == 'okay':
+      observations['breach_count'] = 0
+      observations['clear_count'] += 1
+
+    # only succeed after n passing checks
+      if observations['clear_count'] >= hits:
         observations['clear_count'] = 0
+        observations['in_violation'] = False
+        self.dispatch_alert(observations, rule, message)
 
-      # only violate every n breaches
-        if observations['breach_count'] >= hits:
-          observations['breach_count'] = 0
-          observations['in_violation'] = True
-          #print_struct(observations)
+    else:
+      observations['breach_count'] += 1
+      observations['clear_count'] = 0
 
-      return observations
+    # only violate every n breaches
+      if observations['breach_count'] >= hits:
+        observations['breach_count'] = 0
+        observations['in_violation'] = True
+        self.dispatch_alert(observations, rule, message)
 
-    return None
+    return observations
+
+
+  def dispatch_alert(self, observation, rule, message):
+    for action in rule.get('actions').keys():
+    # NOT OKAY
+      if observation['in_violation']:
+      # if the last violation was clean or if we're just persistently nagging about alerts...
+        if not observation['last_violation_state'] or rule.get('persistent'):
+          self.call_handler(action, message)
+
+    # OKAY
+      else:
+      # if the last violation was dirty or if we're shouting that everything's okay...
+        if observation['last_violation_state'] or rule.get('persistent_ok'):
+          self.call_handler(action, message)
+
+  def call_handler(self, name, message):
+    #try:
+    klass = getattr(sys.modules[__name__], Util.camelize(name, suffix='Handler'))
+    i = klass()
+    i.call(message) 
+
+    #except Exception as e:
+    #  pass
+
 
   def get_state(self, value, rule):
   # for all non-okay states (ordered by most-to-least severe)
     for state in self.valid_states[::-1][:-1]:
-      state_rule = rule.get(state)
+      state_rule = rule['when'].get(state)
 
     # if a rule for this state exists...
-      if state_rule:        
-      # ...and value is above the 'max':
-        if state_rule.get('max') and float(value) > float(state_rule.get('max')):
-          return (state, 'max')
+      if state_rule:   
+      # ...and value is not equal to:
+        if state_rule.get('not') and float(value) != float(state_rule.get('not')):
+          return (state, 'not')
 
-      # ...or equal to the 'is':
+      # ...or is equal to:
         elif state_rule.get('is') and float(value) == float(state_rule.get('is')):
           return (state, 'is')
 
-      # ...or less than the 'min':
-        elif state_rule.get('min') and float(value) < float(state_rule.get('min')):
-          return (state, 'min')
+      # ...and value is above the 'above':
+        elif state_rule.get('above') and float(value) > float(state_rule.get('above')):
+          return (state, 'above')
 
-    return (None,None)
+      # ...or less than the 'below':
+        elif state_rule.get('below') and float(value) < float(state_rule.get('below')):
+          return (state, 'below')
+
+    return ('okay',None)
 
   def print_struct(self, s, m , v, o):
     print "%s/%s: %s %d B/C=%d/%d (%d)" % (s, m, o.data['state'].upper(), v, o['breach_count'], o['clear_count'], o['check_count'])
+
+#------------------------------------------------------------------------------#
+# DecisionHandler
+#
+class DecisionHandler:
+  def call(self, m):
+    return False
+
+
+#------------------------------------------------------------------------------#
+class ExecHandler(DecisionHandler):
+  def call(self, m):
+    print '%s %s/%s: value %f %s threshold of %f' % (m.data['state'].upper(), m.data['source'], m.data['metric'], float(m.data['value']), m.data['comparison'], float(m.data['threshold']))
+    return True

@@ -3,6 +3,7 @@
 #
 import time
 import re
+from string import capwords
 
 class Util:
   DEFAULT_PIDFILE='/var/run/reacter.pid'
@@ -27,9 +28,5 @@ class Util:
     return agents.split(',')
 
   @classmethod
-  def import_class(cls):
-    (_module, _class) = cls.rsplit('.', 2)
-
-  @classmethod
-  def prepare_config_key(key):
-    return key
+  def camelize(self, st, prefix='', suffix=''):
+    return prefix + capwords(st,'_').replace('_','') + suffix
