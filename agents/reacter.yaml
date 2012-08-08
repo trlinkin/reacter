@@ -2,7 +2,7 @@
 sources:
   all:
     dummy.counter:
-      persistent: true
+      persistent: false
 
       actions:
         exec: /usr/local/bin/send_neon

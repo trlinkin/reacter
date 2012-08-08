@@ -86,12 +86,18 @@ class DecisionAgent(Agent):
     message.data['state'] = state
     message.data['comparison'] = comparison
 
+  # set threshold for the current state/comparison
+  # okay has no threshold
+    if not state == 'okay':
+      try:
+        message.data['threshold'] = float(rule['when'][state][comparison])
+      except KeyError:
+        pass
+    
   # further adjust hits for the specific state we're in
     try:
-      message.data['threshold'] = float(rule['when'][state][comparison])
       hits = rule['when'][state]['hits']
-
-    except Exception:
+    except KeyError:
       pass
 
   # set last violation state
@@ -191,5 +197,5 @@ class DecisionHandler:
 #------------------------------------------------------------------------------#
 class ExecHandler(DecisionHandler):
   def call(self, m):
-    print '%s %s/%s: value %f %s threshold of %f' % (m.data['state'].upper(), m.data['source'], m.data['metric'], float(m.data['value']), m.data['comparison'], float(m.data['threshold']))
+    print '%s %s/%s: value %f %s threshold of %f' % (m.data['state'].upper(), m.data['source'], m.data['metric'], float(m.data['value'] or 0.0), m.data['comparison'], float(m.data['threshold'] or 0.0))
     return True
