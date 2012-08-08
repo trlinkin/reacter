@@ -107,8 +107,6 @@ class Reacter:
         self.send(self.opts.send_message, self.opts.send_message_headers)
 
       else:
-        print "Starting..."
-        print "Connected to %s:%s" % (self.stomp_host, self.opts.queue)
         self.queue.process(queue=self.opts.queue)
 
     else:

@@ -3,6 +3,7 @@
 #
 import os
 import sys
+import time
 import imp
 from socket import gethostname
 import stompy
@@ -15,6 +16,7 @@ class Agent(object):
     self.name = name
     self.agents = {}
     self.handlers = {}
+    self.wait_reconnect = (1,1)
 
   def add_agent(self, agent):
     path = sys.path
@@ -33,23 +35,37 @@ class Agent(object):
 
   def connect(self, host=Util.DEFAULT_HOSTNAME, port=Util.DEFAULT_PORT, username=None, password=None, queue=DEFAULT_QUEUE):
     self.queue_name = queue
-    self.conn = stompy.simple.Client(
-      host=host,
-      port=int(port)
-    )
+    self.host = host
+    self.port = int(port)
+    self.username = username
+    self.password = password # iffy
 
-    try:
-      self.conn.connect(
-        username=username,
-        password=password,
-        clientid='%s-%s-%s' % ('reacter', gethostname(), os.getpid())
-      );
-
-    except Exception as e:
-      print "Could not connect: %s" % e.message
-      return False
+    self.start_connection()
 
     return True
+
+  def start_connection(self):
+    while True:
+      try:
+        self.conn = stompy.simple.Client(
+          host=self.host,
+          port=self.port
+        )
+
+        self.conn.connect(
+          username=self.username,
+          password=self.password,
+          clientid='%s-%s-%s' % ('reacter', gethostname(), os.getpid())
+        );
+
+        print "Connected to %s:%s" % (self.host, self.queue_name)
+
+      # we're connected, break the connect-retry loop
+        break
+
+      except stompy.stomp.ConnectionError as e:
+        self.wait_connect()
+        continue
 
   def send(self, message, headers=None):
     self.conn.put(message,
@@ -61,10 +77,24 @@ class Agent(object):
     self.running = True
 
     while self.running:
-      message = self.conn.get(block=True)
-      
-      self.dispatch_message(message)
+      try:
+        message = self.conn.get(block=True)
+        self.dispatch_message(message)
+        self.wait_reconnect = (1,1)
 
+      except stompy.frame.UnknownBrokerResponseError as e:
+        self.wait_connect()
+        self.start_connection()
+        continue
+
+  def wait_connect(self):
+  # wait along the fibonacci sequence to reconnect...
+    print 'Could not connect to message queue, retrying in %ds...' % self.wait_reconnect[1]
+    time.sleep(self.wait_reconnect[0]+self.wait_reconnect[1])
+
+  # max retry wait time
+    if self.wait_reconnect[1] < 55:
+      self.wait_reconnect = (self.wait_reconnect[1], self.wait_reconnect[0]+self.wait_reconnect[1])
 
   def dispatch_message(self, frame):
     #print "Message received, dispatching to agent(s): "

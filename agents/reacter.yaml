@@ -2,7 +2,10 @@
 sources:
   all:
     dummy.counter:
-      persistent: false
+
+      attributes:
+        owner:       "This Guy <tguy@outbrain.com>"
+        description: ""
 
       actions:
         exec: /usr/local/bin/send_neon
