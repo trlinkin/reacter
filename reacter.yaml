@@ -1,0 +1,17 @@
+---
+reacter:
+  options:
+    queue:
+      host: amq
+    # port: 61613
+    # name: /queue/monitoring/metrics
+    config:
+      allow_override: true
+#      paths:
+#        agents: 
+
+  agents:
+    enable: [debug, decider]
+
+    decider:
+      config: /home/ghetzel/src/github/outbrain/reacter/agents

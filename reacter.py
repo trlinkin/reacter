@@ -12,7 +12,8 @@ import os
 import sys
 from optparse import OptionParser
 from util import Util
-from agent import Agent
+from core import Core
+from config import Config
 
 class Reacter:
   def __init__(self):
@@ -20,6 +21,7 @@ class Reacter:
 
   def setup(self):
     self.setup_cli_args()
+    Config.load()
 
   def setup_cli_args(self):
     p = OptionParser()
@@ -34,7 +36,7 @@ class Reacter:
       dest='queue',
       help='The name of the message queue to receive messages from',
       metavar='QUEUE',
-      default=Agent.DEFAULT_QUEUE)
+      default=Core.DEFAULT_QUEUE)
 
     p.add_option("-a", "--agents",
       dest='agents',
@@ -85,21 +87,22 @@ class Reacter:
     return None
 
   def send(self, message, headers=None):
-    self.queue.send(message, headers)
+    self.core.send(message, headers)
 
   def start(self):
   # setup daemon-specific things
     self.initialize_daemon()
 
   # initialize agents
-    self.queue = Agent()
+    self.core = Core()
 
     for agent in self.agents:
       if len(agent) > 0:
-        self.queue.add_agent(agent)
+        Util.info('Registering agent %s' % agent)
+        self.core.add_agent(agent)
 
   # connect to message queue
-    if self.queue.connect(
+    if self.core.connect(
       host=self.stomp_host,
       port=self.stomp_port):
 
@@ -107,7 +110,7 @@ class Reacter:
         self.send(self.opts.send_message, self.opts.send_message_headers)
 
       else:
-        self.queue.process(queue=self.opts.queue)
+        self.core.process(queue=self.opts.queue)
 
     else:
       sys.exit(1)

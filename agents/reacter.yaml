@@ -1,18 +1,20 @@
 ---
-sources:
-  all:
-    dummy.counter:
+reacter:
+  decider:
+    sources:
+      all:
+        dummy.counter:
 
-      attributes:
-        owner:       "This Guy <tguy@outbrain.com>"
-        description: ""
+          attributes:
+            owner:       "This Guy <tguy@outbrain.com>"
+            description: ""
 
-      actions:
-        exec: /usr/local/bin/send_neon
+          actions:
+            exec: /usr/local/bin/send_neon
 
-      when:
-        critical:
-          above: 90
+          when:
+            critical:
+              above: 90
 
-        warning:
-          above: 75
+            warning:
+              above: 75

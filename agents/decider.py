@@ -1,11 +1,12 @@
 #------------------------------------------------------------------------------#
-# DecisionAgent
+# DeciderAgent
 #
 import sys
 import re
 import yaml
 import zlib
 from util import Util
+from config import Config
 from agent import Agent, Message
 
 # --8<----------------------------------------------------------------------8<--
@@ -22,30 +23,21 @@ from agent import Agent, Message
 # 1234
 # -->8---------------------------------------------------------------------->8--
 
-class DecisionAgent(Agent):
+class DeciderAgent(Agent):
   DEFAULT_STATES=['okay', 'warning', 'critical']
 
-  def __init__(self):
+  def __init__(self, name):
+    super(DeciderAgent,self).__init__(name)
     self.observations = {}
-    self.config()
-
-  def config(self):     
-    #if not threshold_file:
-    #  raise Exception('Must specify a ThresholdFile configuration file (yaml)')
-    try:
-      self.threshold_file = '/home/ghetzel/src/github/outbrain/reacter/agents/reacter.yaml'
-      self.yaml = yaml.safe_load(open(self.threshold_file, 'r'))
-    except IOError:
-      self.yaml = {
-        'sources': {}
-      }
 
   # TODO: set this from the config
     self.valid_states = self.DEFAULT_STATES
 
 
   def received(self, message):
-    sources = self.yaml['sources']
+    sources = self.config['sources']
+
+    print sources
     rules = {}
 
   # add all matching rules for all matching sources
