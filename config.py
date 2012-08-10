@@ -62,7 +62,7 @@ class Config:
       Util.debug('Loading supplemental config %s...' % config)
       try:
         sc = yaml.safe_load(file(config, 'r'))
-        self._config = Util.dict_merge(self._config, sc, self.get('options.config.allow_override', False))
+        self._config = Util.dict_merge(self._config, sc, self.get('options.config.allow_override', True))
 
       except IOError as e:
         Util.warn('Could not load supplemental configuration: %s' % e.message)  

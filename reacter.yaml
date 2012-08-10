@@ -5,13 +5,15 @@ reacter:
       host: amq
     # port: 61613
     # name: /queue/monitoring/metrics
-    config:
-      allow_override: true
+#    config:
+#      allow_override: true
 #      paths:
 #        agents: 
 
   agents:
-    enable: [debug, decider]
+    enable: [
+      decider
+    ]
 
     decider:
       config: /home/ghetzel/src/github/outbrain/reacter/agents

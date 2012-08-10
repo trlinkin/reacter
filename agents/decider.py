@@ -36,8 +36,6 @@ class DeciderAgent(Agent):
 
   def received(self, message):
     sources = self.config['sources']
-
-    print sources
     rules = {}
 
   # add all matching rules for all matching sources
@@ -63,10 +61,12 @@ class DeciderAgent(Agent):
       
     if not self.observations[source].get(metric):
       self.observations[source][metric] = {
-        'state':        None,
-        'check_count':  0,
-        'breach_count': 0,
-        'clear_count':  0
+        'state':                None,
+        'last_state': None,
+        'in_violation':         False,
+        'check_count':          0,
+        'breach_count':         0,
+        'clear_count':          0
       }
 
     observations = self.observations[source][metric]
@@ -92,10 +92,6 @@ class DeciderAgent(Agent):
     except KeyError:
       pass
 
-  # set last violation state
-    observations['last_violation_state'] = observations.get('in_violation')
-    observations['state'] = state
-
   # not a good plan....
     message.data['rule'] = abs((zlib.crc32('%s-%s-%s-%s' % (source, metric, state, comparison)) & 0xffffffff))
 
@@ -111,16 +107,28 @@ class DeciderAgent(Agent):
       if observations['clear_count'] >= hits:
         observations['clear_count'] = 0
         observations['in_violation'] = False
+
+      # only set state/last_state when violation changes occur
+        observations['last_state'] = observations.get('state')
+        observations['state'] = state
+
         self.dispatch_alert(observations, rule, message)
 
     else:
       observations['breach_count'] += 1
       observations['clear_count'] = 0
 
+
     # only violate every n breaches
       if observations['breach_count'] >= hits:
+        Util.trace(hits, observations['breach_count'], observations['clear_count'], observations['check_count'], observations['last_state'], observations['state'])
         observations['breach_count'] = 0
         observations['in_violation'] = True
+
+      # only set state/last_state when violation changes occur
+        observations['last_state'] = observations.get('state')
+        observations['state'] = state
+
         self.dispatch_alert(observations, rule, message)
 
     return observations
@@ -130,14 +138,14 @@ class DeciderAgent(Agent):
     for action in rule.get('actions').keys():
     # NOT OKAY
       if observation['in_violation']:
-      # if the last violation was clean or if we're just persistently nagging about alerts...
-        if not observation['last_violation_state'] or rule.get('persistent'):
+      # if the last state was different than the current one or if we're just persistently nagging about alerts...
+        if observation['last_state'] != observation['state'] or rule.get('persistent'):
           self.call_handler(action, message)
 
     # OKAY
       else:
-      # if the last violation was dirty or if we're shouting that everything's okay...
-        if observation['last_violation_state'] or rule.get('persistent_ok'):
+      # if the last state was different than the current one or if we're shouting that everything's okay...
+        if observation['last_state'] != observation['state'] or rule.get('persistent_ok'):
           self.call_handler(action, message)
 
   def call_handler(self, name, message):

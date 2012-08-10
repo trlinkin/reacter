@@ -26,14 +26,16 @@ class Util:
 
   @classmethod
   def parse_agents(self, agents):
-    return agents.split(',')
+    a = agents.split(',')
+    a[:] = [x for x in a if len(x) > 0]
+
+    if len(a) == 0:
+      return []
+
+    return a
 
   @classmethod
   def dict_merge(self, a, b, allow_override=True):
-    '''recursively merges dict's. not just simple a['key'] = b['key'], if
-    both a and bhave a key who's value is a dict then dict_merge is called
-    on both values and the result stored in the returned dictionary.'''
-
     if not isinstance(b, dict):
       return b
 
@@ -63,25 +65,26 @@ class Util:
     return prefix + capwords(st,'_').replace('_','') + suffix
 
   @classmethod
-  def log(self, message, severity='info'):
-    print message
+  def log(self, severity, *message):
+  # stringify all arguments and join them with a space
+    print ' '.join(map(lambda i: str(i), list(message[0])))
 
   @classmethod
-  def trace(self, message):
-    Util.log('TRACE: '+str(message), 'debug')
+  def trace(self, *message):
+    Util.log('debug', message)
 
   @classmethod
-  def debug(self, message):
-    Util.log(message, 'debug')
+  def debug(self, *message):
+    Util.log('debug', message)
 
   @classmethod
-  def info(self, message):
-    Util.log(message, 'info')
+  def info(self, *message):
+    Util.log('info', message)
 
   @classmethod
-  def warn(self, message):
-    Util.log(message, 'warn')
+  def warn(self, *message):
+    Util.log('warn', message)
 
   @classmethod
-  def error(self, message):
-    Util.log(message, 'error')
+  def error(self, *message):
+    Util.log('error', message)

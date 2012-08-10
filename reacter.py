@@ -22,6 +22,8 @@ class Reacter:
   def setup(self):
     self.setup_cli_args()
     Config.load()
+    self.process_config()
+    self.process_cli_args()
 
   def setup_cli_args(self):
     p = OptionParser()
@@ -68,7 +70,14 @@ class Reacter:
 
     (self.opts, self.args) = p.parse_args()
 
-    self.agents = Util.parse_agents(self.opts.agents)
+  def process_config(self):
+    self.agents = Config.get('agents.enable', [])
+
+  def process_cli_args(self):
+    cli_agents = Util.parse_agents(self.opts.agents)
+
+    if cli_agents:
+      self.agents = cli_agents
 
   # handle multiple -F arguments
     headers = self.opts.send_message_headers
@@ -79,6 +88,8 @@ class Reacter:
         self.opts.send_message_headers[h[0]] = h[1]
     
     (self.stomp_host, self.stomp_port) = Util.parse_destination(self.opts.stomp_server)
+
+
 
   def initialize_daemon(self):
     # pid = open(self.opts.pidfile, 'w')
@@ -98,7 +109,7 @@ class Reacter:
 
     for agent in self.agents:
       if len(agent) > 0:
-        Util.info('Registering agent %s' % agent)
+        Util.info('Registering agent:', agent)
         self.core.add_agent(agent)
 
   # connect to message queue

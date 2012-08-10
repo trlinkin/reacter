@@ -8,11 +8,13 @@ import imp
 from socket import gethostname
 import stompy
 from util import Util
+from config import Config
 
 class Agent(object):
   def __init__(self, name=None):
     self.name = name
-    self.config = Config.get('agents.%s' % name, {})
+  # agent's config is scoped to reacter.<agent_name>.*
+    self.config = Config.get(name, {})
 
 
 #------------------------------------------------------------------------------#
