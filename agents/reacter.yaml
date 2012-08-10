@@ -17,4 +17,5 @@ reacter:
               above: 90
 
             warning:
+              hits:  2
               above: 75

@@ -62,7 +62,7 @@ class DeciderAgent(Agent):
     if not self.observations[source].get(metric):
       self.observations[source][metric] = {
         'state':                None,
-        'last_state': None,
+        'last_state':           None,
         'in_violation':         False,
         'check_count':          0,
         'breach_count':         0,
@@ -121,7 +121,6 @@ class DeciderAgent(Agent):
 
     # only violate every n breaches
       if observations['breach_count'] >= hits:
-        Util.trace(hits, observations['breach_count'], observations['clear_count'], observations['check_count'], observations['last_state'], observations['state'])
         observations['breach_count'] = 0
         observations['in_violation'] = True
 
