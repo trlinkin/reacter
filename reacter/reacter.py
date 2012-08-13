@@ -125,6 +125,3 @@ class Reacter:
 
     else:
       sys.exit(1)
-
-reacter = Reacter()
-reacter.start()

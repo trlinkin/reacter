@@ -5,9 +5,9 @@ import os
 import sys
 import re
 import yaml
-from util import Util
-from config import Config
-from agent import Agent, Message
+from reacter.util import Util
+from reacter.config import Config
+from reacter.agent import Agent, Message
 
 # --8<----------------------------------------------------------------------8<--
 # MESSAGE

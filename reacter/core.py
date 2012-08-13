@@ -20,17 +20,21 @@ class Core:
 
   def add_agent(self, agent):
     path = sys.path
-    path.insert(1, '/etc/reacter/agents')
-    path.insert(1, os.path.expanduser('~/.reacter/agents'))
+    path.insert(1, '/etc/reacter')
+    path.insert(1, os.path.expanduser('~/.reacter'))
     path.insert(1, './agents')
+    _file = None
+    _path = None
+    _description = None
 
     try:
-      (_file, _path, _description) = imp.find_module(agent, path)
+      (_file, _path, _description) = imp.find_module('agents.%s' % agent, path)
       agent_module = imp.load_module(agent, _file, _path, _description)
       agent_class = getattr(agent_module, Util.camelize(agent, suffix='Agent'))
       self.agents[agent] = agent_class(agent)
     finally:
-      _file.close()
+      if _file:
+        _file.close()
 
 
   def connect(self, host=Util.DEFAULT_HOSTNAME, port=Util.DEFAULT_PORT, username=None, password=None, queue=DEFAULT_QUEUE):
