@@ -78,8 +78,8 @@ class Core:
 
     while self.running:
       try:
-        message = self.conn.get(block=True)
-        self.dispatch_message(message)
+        frame = self.conn.get(block=True)
+        self.dispatch_message(Message(frame))
         self.wait_reconnect = (1,1)
 
       except stompy.frame.UnknownBrokerResponseError as e:
@@ -96,6 +96,6 @@ class Core:
     if self.wait_reconnect[1] < 55:
       self.wait_reconnect = (self.wait_reconnect[1], self.wait_reconnect[0]+self.wait_reconnect[1])
 
-  def dispatch_message(self, frame):
+  def dispatch_message(self, message):
     for name, agent in self.agents.items():
-      agent.received(Message(frame))
+      agent.received(message)

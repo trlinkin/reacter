@@ -9,7 +9,7 @@ reacter:
             description: ""
 
           actions:
-            exec: /usr/local/bin/send_neon
+            exec: ~/.reacter/bin/dtnotify
 
           when:
             critical:

@@ -1,10 +1,10 @@
 #------------------------------------------------------------------------------#
 # DeciderAgent
 #
+import os
 import sys
 import re
 import yaml
-import zlib
 from util import Util
 from config import Config
 from agent import Agent, Message
@@ -93,7 +93,7 @@ class DeciderAgent(Agent):
       pass
 
   # not a good plan....
-    message.data['rule'] = abs((zlib.crc32('%s-%s-%s-%s' % (source, metric, state, comparison)) & 0xffffffff))
+    message.data['rule'] = Util.get_rule_id(source, metric, state, comparison)
 
   # increment checks
     observations['check_count'] += 1
@@ -139,19 +139,19 @@ class DeciderAgent(Agent):
       if observation['in_violation']:
       # if the last state was different than the current one or if we're just persistently nagging about alerts...
         if observation['last_state'] != observation['state'] or rule.get('persistent'):
-          self.call_handler(action, message)
+          self.call_handler(action, rule['actions'][action], message)
 
     # OKAY
       else:
       # if the last state was different than the current one or if we're shouting that everything's okay...
         if observation['last_state'] != observation['state'] or rule.get('persistent_ok'):
-          self.call_handler(action, message)
+          self.call_handler(action, rule['actions'][action], message)
 
-  def call_handler(self, name, message):
+  def call_handler(self, name, action, message):
     #try:
     klass = getattr(sys.modules[__name__], Util.camelize(name, suffix='Handler'))
     i = klass()
-    i.call(message) 
+    i.call(action, message) 
 
     #except Exception as e:
     #  pass
@@ -189,12 +189,56 @@ class DeciderAgent(Agent):
 # DecisionHandler
 #
 class DecisionHandler:
-  def call(self, m):
+  def call(self, action, m):
     return False
 
 
 #------------------------------------------------------------------------------#
+import subprocess
+
 class ExecHandler(DecisionHandler):
-  def call(self, m):
+  def call(self, action, m):
+    cmd = None
+
     print '%s %s/%s: value %f %s threshold of %f' % (m.data['state'].upper(), m.data['source'], m.data['metric'], float(m.data['value'] or 0.0), m.data['comparison'], float(m.data['threshold'] or 0.0))
-    return True
+
+    if isinstance(action, dict):
+      cmd = action.get('command')
+    else:
+      cmd = action
+
+    if cmd:
+    # setup environment
+      env = os.environ.copy()
+      env["REACTER_SOURCE"] = str(m.data['source'])
+      env["REACTER_METRIC"] = str(m.data['metric'])
+      env["REACTER_THRESHOLD"] = str(m.data['threshold'])
+      env["REACTER_COMPARISON"] = str(m.data['comparison']).upper()
+      env["REACTER_STATE"] = str(m.data['state']).upper()
+      env["REACTER_RULE"] = str(m.data['rule'])
+      env["REACTER_VALUE"] = str(m.data['value'])
+
+    # export global generic params as envvars
+    #   if config['thresholds'].get('params'):
+    #     for k in config['thresholds']['params']:
+    #       env['REACTER_PARAM_'+k.upper()] = str(config['thresholds']['params'][k])
+
+    # # override/augment them with params from lower levels
+    #   if condition.get('params'):
+    #     for k in condition['params']:
+    #       env['REACTER_PARAM_'+k.upper()] = str(condition['params'][k])
+
+    # execute
+      subprocess.Popen(cmd, env=env, shell=True, stdin=None, stdout=None, stderr=None)
+
+
+#------------------------------------------------------------------------------#
+import yaml
+
+class PostHandler(DecisionHandler):
+  def call(self, action, m):
+    output = action.get('type') or 'yaml'
+    #http = action.get('')
+
+    #if isinstance()
+    # POST output (yaml/json) -> URL

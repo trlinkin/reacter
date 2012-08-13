@@ -3,8 +3,10 @@
 #
 import time
 import re
+import zlib
 from string import capwords
 from copy import deepcopy
+from socket import gethostname
 
 class Util:
   DEFAULT_PIDFILE='/var/run/reacter.pid'
@@ -88,3 +90,21 @@ class Util:
   @classmethod
   def error(self, *message):
     Util.log('error', message)
+
+  @classmethod
+  def get_rule_id(self, source, metric, state, comparison):
+    return abs((zlib.crc32('%s-%s-%s-%s' % (source, metric, state, comparison)) & 0xffffffff))
+
+  @classmethod
+  def send_local_event(self, event, value=1):
+    message = Message()
+
+    message.data['source'] = gethostname()
+    message.data['threshold'] = 1
+    message.data['comparison'] = 'is'
+    message.data['state'] = 'warning'
+    message.data['rule'] = Util.get_rule_id(gethostname(), 1, 'warning', 'is')
+    message.data['value'] = value
+
+    if event == 'connect':
+      message.data['metric'] = 'events.reacter.queue.connected'

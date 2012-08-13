@@ -17,7 +17,7 @@ class Config:
     self.load_main_config(config)
     self.process_config()
 
-    print yaml.dump(self._config)
+    #Util.trace(yaml.dump(self._config))
 
 # finds and (re)loads the main configuration file
   @classmethod
