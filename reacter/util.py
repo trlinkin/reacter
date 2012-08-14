@@ -96,15 +96,16 @@ class Util:
     return abs((zlib.crc32('%s-%s-%s-%s' % (source, metric, state, comparison)) & 0xffffffff))
 
   @classmethod
-  def send_local_event(self, event, value=1):
+  def get_event_message(self, event, state='okay', value=1):
+    from agent import Message
     message = Message()
 
     message.data['source'] = gethostname()
     message.data['threshold'] = 1
     message.data['comparison'] = 'is'
-    message.data['state'] = 'warning'
-    message.data['rule'] = Util.get_rule_id(gethostname(), 1, 'warning', 'is')
+    message.data['state'] = state
+    message.data['rule'] = Util.get_rule_id(gethostname(), 1, state, 'is')
     message.data['value'] = value
+    message.data['metric'] = 'events.reacter.queue.%s' % event
 
-    if event == 'connect':
-      message.data['metric'] = 'events.reacter.queue.connected'
+    return message

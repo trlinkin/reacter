@@ -11,9 +11,8 @@ reacter:
 #        agents: 
 
   agents:
-    enable: [
-      decider
-    ]
+    options:
+      enabled: [logger, decider]
 
     decider:
       config: /home/ghetzel/src/github/outbrain/reacter/agents

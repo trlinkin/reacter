@@ -21,12 +21,17 @@ class Reacter:
 
   def setup(self):
     self.setup_cli_args()
-    Config.load()
+    Config.load(self.opts.config)
     self.process_config()
     self.process_cli_args()
 
   def setup_cli_args(self):
     p = OptionParser()
+
+    p.add_option("-c", "--config",
+      dest='config',
+      help='The location of the configuration YAML to load',
+      metavar='FILE')
 
     p.add_option("-H", "--hostname",
       dest='stomp_server',
@@ -71,7 +76,7 @@ class Reacter:
     (self.opts, self.args) = p.parse_args()
 
   def process_config(self):
-    self.agents = Config.get('agents.enable', [])
+    self.agents = Config.get('agents.options.enabled', [])
 
   def process_cli_args(self):
     cli_agents = Util.parse_agents(self.opts.agents)
@@ -89,6 +94,11 @@ class Reacter:
     
     (self.stomp_host, self.stomp_port) = Util.parse_destination(self.opts.stomp_server)
 
+    if Config.get('options.queue.host'):
+      self.stomp_host = Config.get('options.queue.host')
+
+    if Config.get('options.queue.port'):
+      self.stomp_port = Config.get('options.queue.port')
 
 
   def initialize_daemon(self):
@@ -104,7 +114,7 @@ class Reacter:
   # setup daemon-specific things
     self.initialize_daemon()
 
-  # initialize agents
+  # initialize core
     self.core = Core()
 
     for agent in self.agents:
