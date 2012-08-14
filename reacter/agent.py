@@ -20,6 +20,7 @@ class Agent(object):
 #------------------------------------------------------------------------------#
 # Message
 #
+import datetime
 
 class Message:
   def __init__(self, frame=None):
@@ -28,14 +29,16 @@ class Message:
   def init(self, frame=None):
     self.destination = None
     self.data = {
-      'raw':         frame,
-      'source':      None,
-      'metric':      None,
-      'value':       None,
-      'threshold':   None,
-      'state':       None,
-      'comparison':  None,
-      'rule':        None
+      'raw':        frame,
+      'source':     None,
+      'metric':     None,
+      'value':      None,
+      'threshold':  None,
+      'state':      None,
+      'comparison': None,
+      'rule':       None,
+      'time':       int(round(float(datetime.datetime.now().strftime('%s.%f')),3)*1000),
+      'attributes': {},
     }
 
     if frame:

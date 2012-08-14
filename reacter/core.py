@@ -81,9 +81,9 @@ class Core:
     if agents_custom_path:
       if isinstance(agents_custom_path, list):
         for a in agents_custom_path:
-          path.insert(0, a)
+          path.insert(0, os.path.expanduser(a))
       else:
-        path.insert(0, agents_custom_path)
+        path.insert(0, os.path.expanduser(agents_custom_path))
 
   # attempt agent load
     _file = None

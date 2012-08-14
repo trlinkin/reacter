@@ -41,12 +41,14 @@ class Config:
   def process_config(self):
   # LOAD supplemental per-agent configurations
     for agent in self.get('agents.options.enabled'):
-      agent_custom = self.get('agents.%s.config' % agent)
+      agent_path = self.get('agents.options.path', [])
+      agent_custom = self.get('agents.%s.config' % agent, [])
 
-    # get a list of custom agent config paths to include
-      if agent_custom:
-        if isinstance(agent_custom,str):
-          agent_custom = [agent_custom]
+      if isinstance(agent_path,str):
+        agent_path = [agent_path]
+
+      if isinstance(agent_custom,str):
+        agent_custom = [agent_custom]
 
     # look in well known locations
       agent_configs = [
@@ -55,9 +57,11 @@ class Config:
         './agents/%s.yaml' % agent,
       ]
 
-    # add custom paths as more specific than default paths
-      agent_configs.append(agent_custom)
+    # append additional search paths 
+      agent_configs.extend(map(lambda i: os.path.expanduser(os.path.join(i, '%s.yaml' % agent)), agent_path))
 
+    # append custom paths as more specific than default paths
+      agent_configs.extend(agent_custom)
 
     # attempt to load supplemental configs from:
     #   /etc/reacter/agents/<agent>.yaml
