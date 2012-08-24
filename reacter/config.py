@@ -9,6 +9,9 @@ from util import Util
 class Config:
   DEFAULT_CONFIG_PATH=['./', '~/.reacter', '/etc/reacter']
   DEFAULT_CONFIG_NAME='reacter.yaml'
+  DEFAULT_EMPTY_CONFIG={
+    'reacter': {}
+  }
 
   _config = {}
 
@@ -21,26 +24,31 @@ class Config:
 # finds and (re)loads the main configuration file
   @classmethod
   def load_main_config(self, config=None):
-  # build list of possible config file paths to search for
-    path = map(lambda i: os.path.join(i, self.DEFAULT_CONFIG_NAME), self.DEFAULT_CONFIG_PATH)
-
     if config:
-      path.insert(0, config)
+      path = [config]
+    else:
+    # build list of possible config file paths to search for
+      path = map(lambda i: os.path.join(i, self.DEFAULT_CONFIG_NAME), self.DEFAULT_CONFIG_PATH)
+
 
   # attempt to load config from paths, first match wins
     for f in path:
       f = os.path.expanduser(f)
 
       if os.path.isfile(f):
+        Util.debug('Loading main config: %s' % f)
         self._config = yaml.safe_load(file(f, 'r'))
         break
+
+    if len(self._config) == 0:
+      self._config = self.DEFAULT_EMPTY_CONFIG
 
 
 # processes main config
   @classmethod
   def process_config(self):
   # LOAD supplemental per-agent configurations
-    for agent in self.get('agents.options.enabled'):
+    for agent in self.get('agents.options.enabled', []):
       agent_path = self.get('agents.options.path', [])
       agent_custom = self.get('agents.%s.config' % agent, [])
 
@@ -91,7 +99,7 @@ class Config:
     config = os.path.expanduser(config)
 
     if os.path.isfile(config):
-      Util.debug('Loading supplemental config %s...' % config)
+      Util.debug('Loading supplemental config: %s' % config)
       try:
         sc = yaml.safe_load(file(config, 'r'))
         self._config = Util.dict_merge(self._config, sc, self.get('options.config.allow_override', True))

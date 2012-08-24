@@ -21,16 +21,15 @@ class Core:
     self.wait_reconnect = (1,1)
 
 
-  def connect(self, host=Util.DEFAULT_HOSTNAME, port=Util.DEFAULT_PORT, username=None, password=None, queue=DEFAULT_QUEUE):
+  def connect(self, host=Util.DEFAULT_HOSTNAME, port=Util.DEFAULT_PORT, username=None, password=None, queue=DEFAULT_QUEUE, retry=True):
     self.queue_name = queue
     self.host = host
     self.port = int(port)
     self.username = username
     self.password = password # iffy
+    self.auto_retry = retry
 
-    self.start_connection()
-
-    return True
+    return self.start_connection()
 
 
   def start_connection(self):
@@ -56,11 +55,15 @@ class Core:
         Util.info("Connected to", self.host, self.queue_name)
 
       # we're connected, break the connect-retry loop
-        break
+        return True
 
       except stompy.stomp.ConnectionError as e:
-        self.wait_connect()
-        continue
+        if self.auto_retry:
+          self.wait_connect()
+          continue
+        else:
+          Util.error("Connection to %s:%s failed" % (self.host, self.port))
+          return False
 
 
   def send(self, message, headers=None):
@@ -130,5 +133,20 @@ class Core:
 
 
   def dispatch_message(self, message):
+    last_return_value = None
+
+  # iterate through all agents, dispatching the message to each of them
+  #   if agents.options.chain == true, then process the agents sequentially,
+  #   passing the output of one agent into the next one in the chain. if the
+  #   last agent did not return anything, pass in the original message
+  #
+  #   else, process them in parallel, passing the original message to all
+  #   agents simultaneously
+  #
+  #TODO: actually implemet the "parallel"; use gevent to do this async
+  #
     for name, agent in self.agents.items():
-      agent.received(message)
+      if Config.get('agents.options.chain'):
+        last_return_value = agent.received(last_return_value or message)
+      else:
+        agent.received(message)

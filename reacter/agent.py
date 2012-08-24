@@ -16,6 +16,9 @@ class Agent(object):
   # agent's config is scoped to reacter.<agent_name>.*
     self.config = Config.get(name, {})
 
+  def log(self, *message):
+    Util.log('info', ((self.name.upper() or 'AGENT', ':') + message))
+
 
 #------------------------------------------------------------------------------#
 # Message
@@ -30,13 +33,6 @@ class Message:
     self.destination = None
     self.data = {
       'raw':        frame,
-      'source':     None,
-      'metric':     None,
-      'value':      None,
-      'threshold':  None,
-      'state':      None,
-      'comparison': None,
-      'rule':       None,
       'time':       int(round(float(datetime.datetime.now().strftime('%s.%f')),3)*1000),
       'attributes': {},
     }

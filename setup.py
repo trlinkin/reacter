@@ -6,7 +6,7 @@ setup(
   version='0.1.0',
   author='Gary Hetzel',
   author_email='ghetzel@outbrain.com',
-  packages=['reacter', 'reacter.agents'],
+  packages=['reacter'],
   scripts=['bin/reacter'],
   url='http://pypi.python.org/pypi/reacter/',
   license='LICENSE.txt',

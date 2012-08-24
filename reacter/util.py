@@ -24,7 +24,7 @@ class Util:
       host = destination
       port = self.DEFAULT_PORT
 
-    return [host, port]
+    return [host, int(port)]
 
   @classmethod
   def parse_agents(self, agents):
@@ -55,9 +55,9 @@ class Util:
   @classmethod
   def dict_get(self, root, path, default=None):
     for p in path.split('.'):
-      if root.get(p):
-        root = root.get(p)
-      else:
+      try:
+        root = root[p]
+      except KeyError:
         return default
 
     return root

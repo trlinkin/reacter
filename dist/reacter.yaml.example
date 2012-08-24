@@ -13,6 +13,7 @@ reacter:
   agents:
     options:
       enabled: [logger, decider]
+      chain:   true
 
     decider:
       config: /home/ghetzel/src/github/outbrain/reacter/agents

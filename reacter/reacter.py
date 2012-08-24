@@ -64,6 +64,12 @@ class Reacter:
       default=None
     )
 
+    p.add_option('-R', '--no-retry',
+      dest='no_retry_connection',
+      help='Do not automatically attempt to reconnect to the message queue on failed attempts',
+      action="store_true"
+    )
+
     p.add_option('-F', '--header',
       action='append',
       dest='send_message_headers',
@@ -122,10 +128,14 @@ class Reacter:
         Util.info('Registering agent:', agent)
         self.core.add_agent(agent)
 
+    if Config.get('agents.options.chain'):
+      Util.info('Chain mode activated: messages will be sequentially delivered to agents; order %s' % ' -> '.join(self.agents))
+
   # connect to message queue
     if self.core.connect(
       host=self.stomp_host,
-      port=self.stomp_port):
+      port=self.stomp_port,
+      retry=not(self.opts.no_retry_connection)):
 
       if self.opts.send_message:
         self.send(self.opts.send_message, self.opts.send_message_headers)
