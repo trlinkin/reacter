@@ -6,117 +6,135 @@ import sys
 import time
 import imp
 import stompy
+from string import capwords
 from socket import gethostname
 from config import Config
 from util import Util
 from agent import Agent, Message
+import adapter
 
 class Core:
-  DEFAULT_QUEUE='/queue/monitoring/metrics'
-
   def __init__(self):
-    self.running = False
-    self.agents = {}
+    self.listening = False
+    self.agents = []
+    self.adapters = []
     self.handlers = {}
     self.wait_reconnect = (1,1)
 
-
-  def connect(self, host=Util.DEFAULT_HOSTNAME, port=Util.DEFAULT_PORT, username=None, password=None, queue=DEFAULT_QUEUE, retry=True):
-    self.queue_name = queue
-    self.host = host
-    self.port = int(port)
-    self.username = username
-    self.password = password # iffy
-    self.auto_retry = retry
-
+  def connect(self, **kwargs):
+    self.auto_retry = bool(kwargs.get('retry')) or True
     return self.start_connection()
 
-
   def start_connection(self):
-    while True:
+    while self.adapter:
       try:
-        self.conn = stompy.simple.Client(
-          host=self.host,
-          port=self.port
-        )
-
-        self.conn.connect(
-          username=self.username,
-          password=self.password,
-          clientid='%s-%s-%s' % ('reacter', gethostname(), os.getpid())
-        );
+        self.adapter.connect()
 
       # clear disconnect, emit connected message
-        if self.running:
+        if self.listening:
           self.dispatch_message(Util.get_event_message('disconnected'))
 
         self.dispatch_message(Util.get_event_message('connected'))
 
-        Util.info("Connected to", self.host, self.queue_name)
+        Util.info('Connected to', self.adapter.name, 'adapter')
 
       # we're connected, break the connect-retry loop
         return True
 
-      except stompy.stomp.ConnectionError as e:
+      except adapter.AdapterConnectionFailed as e:
         if self.auto_retry:
           self.wait_connect()
           continue
         else:
-          Util.error("Connection to %s:%s failed" % (self.host, self.port))
+          Util.error('Connection to', self.adapter.name, 'adapter failed')
           return False
 
 
-  def send(self, message, headers=None):
-    self.conn.put(message,
-      destination=self.queue_name,
-      conf=headers)
+  def send(self, message):
+    self.adapter.send(message)
 
+  def add_adapter(self, name):
+    self.adapter = self.load_plugin(
+      plugin_type='adapter',
+      name=name,
+      config_root='adapter'
+    )
 
-  def add_agent(self, agent):
+    return self.adapter
+
+  def add_agent(self, name):
+    return self.load_plugin(
+      plugin_type='agent',
+      name=name
+    )
+
+# generic plugin loader
+  def load_plugin(self, plugin_type, name, class_suffix=None, config_root=None):
+  # set class suffix to a sane default
+    class_suffix = class_suffix or capwords(plugin_type)
+
+  # dumb-style pluralize for pluggable object types
+    plugin_type = plugin_type+'s'
+    config_root = config_root or plugin_type
+
     path = sys.path
-    agents_custom_path = Config.get('agents.options.path')
+    plugins_custom_path = Config.get('%s.options.path' % config_root)
 
-    path.insert(0, '/etc/reacter/agents')
-    path.insert(0, os.path.expanduser('~/.reacter/agents'))
-    path.insert(0, './agents')
+    path.insert(0, '/etc/reacter/%s' % plugin_type)
+    path.insert(0, os.path.expanduser('~/.reacter/%s' % plugin_type))
+    path.insert(0, './%s' % plugin_type)
 
-  # add custom agent paths as most specific search path(s)
-    if agents_custom_path:
-      if isinstance(agents_custom_path, list):
-        for a in agents_custom_path:
+  # add custom plugin paths as most specific search path(s)
+    if plugins_custom_path:
+      if isinstance(plugins_custom_path, list):
+        for a in plugins_custom_path:
           path.insert(0, os.path.expanduser(a))
       else:
-        path.insert(0, os.path.expanduser(agents_custom_path))
+        path.insert(0, os.path.expanduser(plugins_custom_path))
 
-  # attempt agent load
+  # attempt plugin load
     _file = None
     _path = None
     _description = None
 
     try:
-      (_file, _path, _description) = imp.find_module(agent, path)
-      agent_module = imp.load_module(agent, _file, _path, _description)
-      agent_class = getattr(agent_module, Util.camelize(agent, suffix='Agent'))
-      self.agents[agent] = agent_class(agent)
+      (_file, _path, _description) = imp.find_module(name, path)
+      plugin_module = imp.load_module(name, _file, _path, _description)
+      klass = getattr(plugin_module, Util.camelize(name, suffix=class_suffix))
+      store = getattr(self, plugin_type)
+      kl = klass(name)
+      store.append(kl)
+      return kl
+
     finally:
       if _file:
         _file.close()
 
+    return None
 
-  def process(self, queue):
-    self.conn.subscribe(queue, ack='auto')
-    self.running = True
+  def listen(self):
+    self.listening = True
 
-    while self.running:
+    while self.listening:
       try:
-        frame = self.conn.get(block=True)
-        self.dispatch_message(Message(frame))
+        messages = self.adapter.poll()
+
+      # make this a list if it isn't already
+        if not isinstance(messages, list):
+          messages = [messages]
+
+      # dispatch all returned messages
+        for m in messages:          
+          self.dispatch_message(m)
+
+      # this poll was successful, we're still connected / successfully reconnected
         self.wait_reconnect = (1,1)
 
-      except stompy.frame.UnknownBrokerResponseError as e:
+      except adapter.AdapterConnectionFailed as e:
       # emit disconnected message
         self.dispatch_message(Util.get_event_message('disconnected', 'error'))
 
+      # wait then attempt reconnect
         self.wait_connect()
         self.start_connection()
         continue
@@ -124,11 +142,11 @@ class Core:
 
   def wait_connect(self):
   # wait along the fibonacci sequence to reconnect...
-    Util.error('Could not connect to message queue, retrying in %ds...' % self.wait_reconnect[1])
+    Util.error('Could not connect to %s adapter, retrying in %ds...' % (self.adapter.name, self.wait_reconnect[1]))
     time.sleep(self.wait_reconnect[0]+self.wait_reconnect[1])
 
   # max retry wait time
-    if self.wait_reconnect[1] < 55:
+    if self.wait_reconnect[1] < int(Config.get('options.retry_limit') or Util.DEFAULT_RETRY_LIMIT):
       self.wait_reconnect = (self.wait_reconnect[1], self.wait_reconnect[0]+self.wait_reconnect[1])
 
 
@@ -145,7 +163,7 @@ class Core:
   #
   #TODO: actually implemet the "parallel"; use gevent to do this async
   #
-    for name, agent in self.agents.items():
+    for agent in self.agents:
       if Config.get('agents.options.chain'):
         last_return_value = agent.received(last_return_value or message)
       else:

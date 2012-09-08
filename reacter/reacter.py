@@ -33,17 +33,11 @@ class Reacter:
       help='The location of the configuration YAML to load',
       metavar='FILE')
 
-    p.add_option("-H", "--hostname",
-      dest='stomp_server',
-      help='The STOMP server to connect to',
-      metavar='HOST[:PORT]',
-      default="%s:%s" % (Util.DEFAULT_HOSTNAME, Util.DEFAULT_PORT))
-
-    p.add_option("-q", "--queue",
-      dest='queue',
-      help='The name of the message queue to receive messages from',
-      metavar='QUEUE',
-      default=Core.DEFAULT_QUEUE)
+    p.add_option("-A", "--adapter",
+      dest='adapter',
+      help='The name of the adapter to use for sending and receiving data',
+      metavar='ADAPTER',
+      default=None)
 
     p.add_option("-a", "--agents",
       dest='agents',
@@ -56,27 +50,11 @@ class Reacter:
       help='The location of the PID file',
       metavar='PIDFILE',
       default=Util.DEFAULT_PIDFILE)
-
-    p.add_option('-m', '--message',
-      dest='send_message',
-      help='A single message to add to the queue',
-      metavar='MESSAGE',
-      default=None
-    )
-
+    
     p.add_option('-R', '--no-retry',
       dest='no_retry_connection',
       help='Do not automatically attempt to reconnect to the message queue on failed attempts',
       action="store_true"
-    )
-
-    p.add_option('-F', '--header',
-      action='append',
-      dest='send_message_headers',
-      help='A header to add to an outgoing message',
-      metavar='NAME VALUE',
-      default=None,
-      nargs=2
     )
 
     (self.opts, self.args) = p.parse_args()
@@ -90,31 +68,11 @@ class Reacter:
     if cli_agents:
       self.agents = cli_agents
 
-  # handle multiple -F arguments
-    headers = self.opts.send_message_headers
-    self.opts.send_message_headers = {}
-    
-    if headers:
-      for h in headers:
-        self.opts.send_message_headers[h[0]] = h[1]
-    
-    (self.stomp_host, self.stomp_port) = Util.parse_destination(self.opts.stomp_server)
-
-    if Config.get('options.queue.host'):
-      self.stomp_host = Config.get('options.queue.host')
-
-    if Config.get('options.queue.port'):
-      self.stomp_port = Config.get('options.queue.port')
-
-
   def initialize_daemon(self):
     # pid = open(self.opts.pidfile, 'w')
     # pid.write(str(os.getpid())+'\n')
     # pid.close()
     return None
-
-  def send(self, message, headers=None):
-    self.core.send(message, headers)
 
   def start(self):
   # setup daemon-specific things
@@ -123,25 +81,28 @@ class Reacter:
   # initialize core
     self.core = Core()
 
+  # add the backend adapter
+    self.core.add_adapter(self.opts.adapter or Config.get('adapter.name'))
+
     for agent in self.agents:
       if len(agent) > 0:
         Util.info('Registering agent:', agent)
         self.core.add_agent(agent)
 
     if Config.get('agents.options.chain'):
-      Util.info('Chain mode activated: messages will be sequentially delivered to agents; order %s' % ' -> '.join(self.agents))
+      Util.info('Chain mode activated: messages will be sequentially delivered to agents in the order %s' % ' -> '.join(self.agents))
 
   # connect to message queue
     if self.core.connect(
-      host=self.stomp_host,
-      port=self.stomp_port,
-      retry=not(self.opts.no_retry_connection)):
+      retry=not(self.opts.no_retry_connection)
+    ):
 
-      if self.opts.send_message:
-        self.send(self.opts.send_message, self.opts.send_message_headers)
+    # send message via standard input
+      if not sys.stdin.isatty():
+        self.core.send(sys.stdin.read())
 
       else:
-        self.core.process(queue=self.opts.queue)
+        self.core.listen()
 
     else:
       sys.exit(1)

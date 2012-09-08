@@ -12,6 +12,7 @@ class Util:
   DEFAULT_PIDFILE='/var/run/reacter.pid'
   DEFAULT_HOSTNAME="localhost"
   DEFAULT_PORT=61613
+  DEFAULT_RETRY_LIMIT=55
 
   @classmethod
   def parse_destination(self, destination):
