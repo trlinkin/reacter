@@ -6,7 +6,7 @@ import sys
 import time
 import imp
 from socket import gethostname
-import stompy
+import yaml
 from util import Util
 from config import Config
 

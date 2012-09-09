@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import imp
-import stompy
+import yaml
 from string import capwords
 from socket import gethostname
 from config import Config
@@ -23,7 +23,12 @@ class Core:
 
   def connect(self, **kwargs):
     self.auto_retry = bool(kwargs.get('retry')) or True
-    return self.start_connection()
+
+    if self.adapter:
+      self.adapter.config['sender'] = bool(kwargs.get('sender'))
+      return self.start_connection()
+
+    return False
 
   def start_connection(self):
     while self.adapter:
@@ -50,8 +55,14 @@ class Core:
           return False
 
 
-  def send(self, message):
-    self.adapter.send(message)
+  def send(self, body):
+    if isinstance(body, str):
+      messages = yaml.safe_load_all(body)
+
+
+    for message in messages:
+      Util.trace('SEND', message)
+      self.adapter.send(Message(message))
 
   def add_adapter(self, name):
     self.adapter = self.load_plugin(

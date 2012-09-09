@@ -57,6 +57,12 @@ class Reacter:
       action="store_true"
     )
 
+    p.add_option('-s', '--send',
+      dest='send_mode',
+      help='Operate in send mode, pushing a message into an adapter',
+      action="store_true"
+    )
+
     (self.opts, self.args) = p.parse_args()
 
   def process_config(self):
@@ -75,8 +81,8 @@ class Reacter:
     return None
 
   def start(self):
-  # setup daemon-specific things
-    self.initialize_daemon()
+    #if self.opts.send_mode:
+    # mute logger output of severity < warning
 
   # initialize core
     self.core = Core()
@@ -90,18 +96,22 @@ class Reacter:
         self.core.add_agent(agent)
 
     if Config.get('agents.options.chain'):
-      Util.info('Chain mode activated: messages will be sequentially delivered to agents in the order %s' % ' -> '.join(self.agents))
+      Util.info('Chain mode activated: messages will be sequentially delivered to agents in the order: %s' % ' -> '.join(self.agents))
 
   # connect to message queue
     if self.core.connect(
-      retry=not(self.opts.no_retry_connection)
+      retry=not(self.opts.no_retry_connection),
+      sender=self.opts.send_mode
     ):
 
-    # send message via standard input
-      if not sys.stdin.isatty():
+    # send mode (via standard input)
+      if self.opts.send_mode:
         self.core.send(sys.stdin.read())
 
       else:
+      # setup daemon-specific things
+        self.initialize_daemon()
+
         self.core.listen()
 
     else:
