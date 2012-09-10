@@ -33,6 +33,11 @@ p{
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.23) !important;
 }
 
+.readable a{
+  color: inherit;
+  text-decoration: underline;
+}
+
 .pipeline{ 
   padding: 1em;
 }
@@ -164,6 +169,11 @@ p{
 .row div h3{
   color: #E68700;
   text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.23);
+}
+
+h3 > a,
+h3 > a:hover{
+  color: #E68700; 
 }
 
 .gettingStarted > div > p{
