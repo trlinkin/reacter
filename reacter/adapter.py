@@ -9,6 +9,9 @@ class AdapterConnectionFailed(Exception):
 class AdapterConnectionFaulted(Exception):
   pass
 
+class AdapterConnectionClosed(Exception):
+  pass
+
 class Adapter(object):
   def __init__(self, name):
     self.name = name
@@ -28,3 +31,7 @@ class Adapter(object):
 # implement: poll for a new message and return it
   def poll(self):
     return False
+
+# implement: manual disconnect / cleanup
+  def disconnect(self):
+    raise AdapterConnectionClosed

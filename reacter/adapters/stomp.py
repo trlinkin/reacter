@@ -51,3 +51,8 @@ class StompAdapter(adapter.Adapter):
 
     except stompy.frame.UnknownBrokerResponseError as e:
       raise adapter.AdapterConnectionFailed(e)
+
+  def disconnect(self):
+
+  # bubble up
+    super(StompAdapter,self).disconnect()

@@ -24,6 +24,7 @@ class Core:
   def connect(self, **kwargs):
     self.auto_retry = bool(kwargs.get('retry')) or True
 
+  # set runtime options for the current adapter
     if self.adapter:
       self.adapter.config['sender'] = bool(kwargs.get('sender'))
       return self.start_connection()
@@ -31,7 +32,7 @@ class Core:
     return False
 
   def start_connection(self):
-    while self.adapter:
+    while True:
       try:
         self.adapter.connect()
 
@@ -55,16 +56,21 @@ class Core:
           return False
 
 
+  def disconnect(self):
+    self.adapter.disconnect()
+
+
   def send(self, body):
+  # load all input messages
     if isinstance(body, str):
       messages = yaml.safe_load_all(body)
 
-
+  # send all messages
     for message in messages:
-      Util.trace('SEND', message)
       self.adapter.send(Message(message))
 
-  def add_adapter(self, name):
+# set adapter
+  def set_adapter(self, name):
     self.adapter = self.load_plugin(
       plugin_type='adapter',
       name=name,
@@ -73,6 +79,7 @@ class Core:
 
     return self.adapter
 
+# load an agent by name
   def add_agent(self, name):
     return self.load_plugin(
       plugin_type='agent',
@@ -149,6 +156,14 @@ class Core:
         self.wait_connect()
         self.start_connection()
         continue
+
+      except adapter.AdapterConnectionClosed as e:
+      # emit disconnected message
+        self.dispatch_message(Util.get_event_message('disconnected', 'error'))
+        break
+
+      except Exception as e:
+        raise adapter.AdapterConnectionFaulted(e)
 
 
   def wait_connect(self):

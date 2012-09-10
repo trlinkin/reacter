@@ -10,6 +10,7 @@
 #
 import os
 import sys
+import signal
 from optparse import OptionParser
 from util import Util
 from core import Core
@@ -75,9 +76,12 @@ class Reacter:
       self.agents = cli_agents
 
   def initialize_daemon(self):
+    signal.signal(signal.SIGINT, self.signal_handler)
+
     # pid = open(self.opts.pidfile, 'w')
     # pid.write(str(os.getpid())+'\n')
     # pid.close()
+
     return None
 
   def start(self):
@@ -87,9 +91,10 @@ class Reacter:
   # initialize core
     self.core = Core()
 
-  # add the backend adapter
-    self.core.add_adapter(self.opts.adapter or Config.get('adapter.name'))
+  # set the backend adapter
+    self.core.set_adapter(self.opts.adapter or Config.get('adapter.name'))
 
+  # add all agents
     for agent in self.agents:
       if len(agent) > 0:
         Util.info('Registering agent:', agent)
@@ -108,6 +113,7 @@ class Reacter:
       if self.opts.send_mode:
         self.core.send(sys.stdin.read())
 
+    # listen mode (default)
       else:
       # setup daemon-specific things
         self.initialize_daemon()
@@ -116,3 +122,11 @@ class Reacter:
 
     else:
       sys.exit(1)
+
+  def signal_handler(self, number, frame):
+    Util.debug('SIGNAL', number, frame)
+
+    if number == signal.SIGINT:
+      self.core.disconnect()
+
+    sys.exit(0)
