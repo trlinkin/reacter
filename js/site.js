@@ -7,10 +7,6 @@ $(document).ready(function(){
 function updateCurrentNavigationItem(uri){
   $('.navbar .nav li').each(function(i, item){
     uri_file = uri.pathname.split('/').pop();
-    if(uri_file == 'reacter' || uri_file.length == 0){
-      uri_file = 'index';
-    }
-
     nav_file = item.firstElementChild['href'].split('/').pop();
 
     if(nav_file == uri_file)
