@@ -6,10 +6,10 @@ $(document).ready(function(){
 
 function updateCurrentNavigationItem(uri){
   $('.navbar .nav li').each(function(i, item){
-    uri_file = uri.pathname.split('/').pop();
-    nav_file = item.firstElementChild['href'].split('/').pop();
+    nav_section = item.firstElementChild['href'].split('/')[1]; // [0]project / [1]section / [2-]...
+    uri_section = uri.pathname.split('/')[2]; // [0]domain / [1]project / [2]section
 
-    if(nav_file == uri_file)
+    if(nav_section == uri_section)
     {
       $(item).addClass('active');
     }
