@@ -1,0 +1,101 @@
+---
+title:  Overview
+layout: default
+---
+<div class="row">
+  <div class="span6">
+    <div class="readable">
+      <h2>What is Reacter?</h2>
+      <p>
+        Reacter is a pluggable daemon, written in Python, designed to consume structured data (YAML) from a message queue or other data source, apply a series of processing rules to that data, then forward the output to one or more destinations.
+      </p>
+
+      <h4>Adaptable</h4>
+      <p>
+        Reacter is highly customizable with a powerful set of plugins (called <em>agents</em>) designed to work with the message data it receives.  Standard agents include the ability to manipulate fields with regular expressions, apply conditional execution of scripts based on thresholds, and forwarding output data to popular systems such as Nagios and Graphite.  Creating new agents is extremely simple, so integrating new systems into Reacter is straightforward and easy.
+      </p>            
+
+      <h4>Scalable</h4>
+      <p>
+        Reacter can be easily scaled with its backend message queue as each instance acts as a subscriber to a common endpoint.  This pattern is given many names in the distributed message queue world; it is interchangably referred to as a <em>load balanced queue</em>, the <em>push-pull pattern</em>, or a <em>traditional queue</em>.  The theory of operation is the same: messages enter the queue from one or more publishers, which have no knowledge of the consumers.  Meanwhile, one or more consumers (Reacter daemons) connect to the queue to receive messages.  Messages are distributed in a sequential or round-robin fashion such that one message goes to exactly one consumer.  This is in contrast to a topic-based queue where a message is broadcast to all consumers.
+      </p>
+
+      <h4>Configurable</h4>
+      <p>
+        Reacter's configuration is very robust and can be broken out in many ways.  This provide the flexibility for administrators to allow users to create their own configurations, while also maintaining appropriate privilege separation and security.  Individual files to entire directory trees can be included in the main configuration, allowing Reacter to be configured in a way that makes the most sense for a specific environment.  Reacter also provides sane defaults for most options so that configuration overhead and complexity can be kept to a minimum, favoring convention over detailed configuration.
+      </p>
+
+    </div>
+
+    <div class="readable">
+      <h2>Piecewise Monitoring: A Scenario</h2>
+      <p>
+        Let's say you have a monitoring infrastructure made up of a combination of several open source projects (e.g. Nagios, Graphite, collectd, StatsD), and one proprietary platform that you use to monitor your extensive virtualization deployment.  Each of these systems serves a different purpose, but together they hold the data necessary for you &mdash; the ever-busy sysadmin &mdash; to discover, diagnose, and solve problems that develop in your environment.
+      </p>
+
+      <p>
+        The biggest problem you are facing at the moment is that integrating these systems is sometimes tricky and time consuming.  Among these challenges are:
+
+        <ul>
+          <li>
+            Your environment is growing quickly, and Nagios is starting to get outpaced by the volume of active checks being performed.
+          </li>
+
+          <li>
+            Using collectd has given you a great deal of per-node data, but there are some pieces of information that you would like to ignore entirely.  However, some of collectd's plugins do not provide the option to turn off these unwanted metrics.
+          </li>
+
+          <li>
+            You would like to explore the idea of altering the hierarchy as it appears in Graphite, as some users are finding it difficult to work with the structure as is.  Unfortunately, the source code to the Java application that is generating a set of metrics was never received from the third party vendor, and getting it is an expensive proposition; the metric name cannot be easily changed.
+          </li>
+
+          <li>
+            Finally, you need to merge a subset of the data coming from the proprietary system into the tree of metrics created by collectd, having them show up in a logical and predictable place.
+          </li>
+        </ul>
+      </p>
+
+      <p>
+        This hectic scenario may sound like it's workable, solvable, and above all, preventable &mdash; and indeed, it is.  But you are one of a very small team of people tasked with keeping everything running, and you live and die by time.  Each of these problems can be attacked from different angles specific to the application, but that means possibly disruptive configuration changes, which means extensive testing and maintenance.  For the hard-coded black boxes in your infrastructure, solving such problems almost certainly involves some kind of proxy script, screenscraper, or hacky cron job.
+      </p>
+
+      <p>
+        Reacter provides a simple solution to these problems by creating a monitoring pipeline.  Instead of monitoring systems talking directly to each other in domain-specific, clunky, and inconsistent ways, they all talk to Reacter in the same way.  The up front work of getting all data sources to dump metrics in a common format (the YAML message format) allows all future changes to the monitoring infrastructure to be managed from one place.  It lets you form a system where individual components don't depend on each other, and can be changed out for others without disrupting the entire ecosystem.
+      </p>
+
+      <p>
+        Here are some possible solutions to the above scenarios:
+
+        <ul>
+          <li>
+            Convert your Nagios active checks into passive checks, making it a push architecture as opposed to a polling architecture.  A very simple adapter for Reacter allows it to receive output from Nagios service checks.  Reacter would then determine whether the value submitted is in violation of a given threshold using the <em>decider</em> agent.  For complex checks that have the threshold logic built into them, the message could pass through the decider agent without being altered.  Once the message contains the appropriate status and threshold information, Reacter can generate a passive check directly by using the External Command File or via the NSCA addon.<br /><br />
+
+            <strong>Note:</strong> Using this method would also make a multi-master Nagios setup possible, as passive checks do not depend on Nagios' state, but rather simply leverage its escalation model to determine the appropriate course of action for an already-generated alert from a third party.
+          </li>
+
+          <li>
+            Metrics can be selectively altered or dropped using the <em>mangle</em> agent, which lets you manipulate or remove metrics that match certain patterns.  You could drop all metrics that start with <em>"collectd\.load\..*"</em> from all machines, or from machines whose hostnames match a given pattern.
+          </li>
+
+          <li>
+            Also using the <em>mangle</em> agent, you can perform on-the-fly substitutions of metric names based on regular expressions and capture groups.  This would let you rewrite the name of the Java metric before it gets processed by any other agents, and before it gets forwarded on to Graphite.
+          </li>
+
+          <li>
+            The <em>mangle</em> module would also let you rewrite metric names from the proprietary system such that they fall under the correct tree location from collectd.  Getting data from the proprietary system can be achieved by a custom adapter or external process that otherwise gets the observations into the message queue.  Reacter does not care how the data gets into it, it will process it all the same.
+          </li>
+        </ul>
+      </p>
+    </div>
+  </div>
+
+  <div class="span5 pipeline">
+    <h2>Data Processing Pipeline</h2>
+    <p>
+      
+    </p>
+    <p class="diagram">
+      <img src="images/reacter-pipeline.png" />
+    </p>
+  </div>
+</div>
