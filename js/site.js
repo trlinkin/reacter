@@ -7,8 +7,8 @@ $(document).ready(function(){
 function updateCurrentNavigationItem(uri){
   $('.navbar .nav li').each(function(i, item){
     console.log(item.firstElementChild['href'].split('/'), uri.pathname.split('/'));
-    nav_section = item.firstElementChild['href'].split('/')[1]; // [0]project / [1]section / [2-]...
-    uri_section = uri.pathname.split('/')[1]; // [1]project / [2]section
+    nav_section = item.firstElementChild['href'].split('/')[2];
+    uri_section = uri.pathname.split('/')[4];
 
     if(nav_section == uri_section)
     {
