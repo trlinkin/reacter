@@ -49,14 +49,12 @@ class Config:
   def process_config(self):
   # LOAD supplemental per-agent configurations
     for agent in self.get('agents.options.enabled', []):
-      agent_path = self.get('agents.options.path', [])
-      agent_custom = self.get('agents.%s.config' % agent, [])
+      agent_path = self.get('agents.options.path', [], as_list=True)
+      agent_custom = self.get('agents.%s.config' % agent, [], as_list=True)
 
-      if isinstance(agent_path,str):
-        agent_path = [agent_path]
-
-      if isinstance(agent_custom,str):
-        agent_custom = [agent_custom]
+    # add agent module path(s)
+      for p in self.get('options.paths.agents', [], as_list=True):
+        agent_path.insert(0, p)
 
     # look in well known locations
       agent_configs = [
@@ -113,6 +111,12 @@ class Config:
     return False
 
   @classmethod
-  def get(self, path, default=None):
+  def get(self, path, default=None, as_list=False):
     path = re.sub('^reacter\.', '', path)
-    return Util.dict_get(self._config['reacter'], path, default)
+    rv = Util.dict_get(self._config['reacter'], path, default)
+
+    if as_list:
+      if not isinstance(rv, list):
+        return [rv]
+
+    return rv

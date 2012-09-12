@@ -14,5 +14,6 @@ setup(
   long_description=open('reacter/README.md').read(),
   install_requires=[
     "PyYAML >= 3.1.0",
+    "pyzmq"
   ],
 )

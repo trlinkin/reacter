@@ -71,6 +71,8 @@ class Core:
 
 # set adapter
   def set_adapter(self, name):
+    Util.debug('Setting adapter:', name)
+
     self.adapter = self.load_plugin(
       plugin_type='adapter',
       name=name,
@@ -96,7 +98,7 @@ class Core:
     config_root = config_root or plugin_type
 
     path = sys.path
-    plugins_custom_path = Config.get('%s.options.path' % config_root)
+    plugins_custom_path = Config.get('options.paths.%s' % plugin_type)
 
     path.insert(0, '/etc/reacter/%s' % plugin_type)
     path.insert(0, os.path.expanduser('~/.reacter/%s' % plugin_type))
@@ -123,6 +125,11 @@ class Core:
       kl = klass(name)
       store.append(kl)
       return kl
+
+    except ImportError as e:
+      Util.error('Could not load', class_suffix.lower()+':', name+',', 'searched in:')
+      for p in path:
+        Util.error('  ', os.path.abspath(p))
 
     finally:
       if _file:
@@ -162,8 +169,8 @@ class Core:
         self.dispatch_message(Util.get_event_message('disconnected', 'error'))
         break
 
-      except Exception as e:
-        raise adapter.AdapterConnectionFaulted(e)
+      #except Exception as e:
+      #  raise adapter.AdapterConnectionFaulted(e)
 
 
   def wait_connect(self):
