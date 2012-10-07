@@ -18,6 +18,7 @@ from config import Config
 
 class Reacter:
   def __init__(self):
+    self.running = False
     self.setup()
 
   def setup(self):
@@ -109,6 +110,9 @@ class Reacter:
       sender=self.opts.send_mode
     ):
 
+    # we're running now
+      self.running = True
+
     # send mode (via standard input)
       if self.opts.send_mode:
         self.core.send(sys.stdin.read())
@@ -118,12 +122,23 @@ class Reacter:
       # setup daemon-specific things
         self.initialize_daemon()
 
-        self.core.listen()
+        while self.running:
+          try:
+            self.core.listen()
+
+          except Exception, e:
+            import traceback, os.path
+            tb = traceback.extract_stack()[-1]
+
+            Util.error('[!!]', type(e).__name__.split('.')[-1],
+              'in %s:%s' %(os.path.basename(tb[0]), str(tb[1])),
+              ': %s' % (e.message or ''))
 
     else:
       sys.exit(1)
 
   def signal_handler(self, number, frame):
+    self.running = False
     Util.debug('SIGNAL', number, frame)
 
     if number == signal.SIGINT:

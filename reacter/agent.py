@@ -33,3 +33,5 @@ class Message:
       'time':       int(round(float(datetime.datetime.now().strftime('%s.%f')),3)*1000),
       'attributes': {},
     }, body)
+
+    self.data['event'] = self.data.has_key('value')

@@ -53,9 +53,12 @@ class ZeromqAdapter(adapter.Adapter):
   # connect to the transport
     if self._sender:
     # senders bind
+      Util.info('zeromq: Binding to %s' % self.transport)
       self._queue.bind(self.transport)
+
     else:
     # receivers connect
+      Util.info('zeromq: Connecting to %s' % self.transport)
       self._queue.connect(self.transport)
 
 

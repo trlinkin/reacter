@@ -97,7 +97,7 @@ class Util:
     return abs((zlib.crc32('%s-%s-%s-%s' % (source, metric, state, comparison)) & 0xffffffff))
 
   @classmethod
-  def get_event_message(self, event, state='okay', value=1):
+  def get_event_message(self, event, state='okay', value=None):
     from agent import Message
     message = Message()
 
