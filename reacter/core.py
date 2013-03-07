@@ -5,7 +5,8 @@ import os
 import sys
 import time
 import imp
-import yaml
+import json
+import copy
 from string import capwords
 from socket import gethostname
 from config import Config
@@ -61,9 +62,44 @@ class Core:
 
 
   def send(self, body):
+    messages = []
+
   # load all input messages
-    if isinstance(body, str):
-      messages = yaml.safe_load_all(body)
+    if isinstance(body, basestring):
+    # cheesy JSON autodetect
+      if body[0] == '{' or body[0] == '[':
+        m = json.loads(body)
+
+        if not isinstance(m,list):
+          messages = [m]
+
+    # OpenTSDB formatted string
+      elif body.upper()[0:4] == 'PUT ':
+        for line in body:
+          line = line.split(' ')
+
+        # expose TSDB tags as attributes
+          attrs = {}
+          for a in line[4:-1]:
+            a = a.split('=', 1)
+            attrs[a[0]] = a[1]
+
+          messages.append({
+            'metric':     line[1],
+            'time':       (int(line[2])*1000),
+            'value':      float(line[3]),
+            'attributes': attrs
+          })
+
+    # Graphite formatted string
+      else:
+        for line in body:
+          line = line.split(' ', 3)
+          messages.append({
+            'metric': line[0],
+            'value':  float(line[1]),
+            'time':   (int(line[2])*1000)
+          })
 
   # send all messages
     for message in messages:
@@ -97,12 +133,12 @@ class Core:
     plugin_type = plugin_type+'s'
     config_root = config_root or plugin_type
 
-    path = sys.path
-    plugins_custom_path = Config.get('options.paths.%s' % plugin_type)
+    path = copy.copy(sys.path)
+    plugins_custom_path = Config.get('%s.path' % plugin_type)
 
+    path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), plugin_type))
     path.insert(0, '/etc/reacter/%s' % plugin_type)
     path.insert(0, os.path.expanduser('~/.reacter/%s' % plugin_type))
-    path.insert(0, './%s' % plugin_type)
 
   # add custom plugin paths as most specific search path(s)
     if plugins_custom_path:
@@ -127,7 +163,8 @@ class Core:
       return kl
 
     except ImportError as e:
-      Util.error('Could not load', class_suffix.lower()+':', name+',', 'searched in:')
+      Util.error('Could not load', class_suffix.lower(), name+':', e.message)
+      Util.error('Search path for %s %s:' % (class_suffix.lower(), name))
       for p in path:
         Util.error('  ', os.path.abspath(p))
 
@@ -149,7 +186,7 @@ class Core:
           messages = [messages]
 
       # dispatch all returned messages
-        for m in messages:          
+        for m in messages:
           self.dispatch_message(m)
 
       # this poll was successful, we're still connected / successfully reconnected
@@ -186,8 +223,22 @@ class Core:
   def dispatch_message(self, message):
     last_return_value = None
 
+  # do nothing if missing required fields
+  #   time
+  #   metric
+  #   value OR event==true
+  #
+    if not (
+      ('time'   in message.data) and
+      ('metric' in message.data) and
+      (
+        ('value' in message.data) or
+        ('event' in message.data and message.data['event'] == True)
+      )
+    ): return None
+
   # iterate through all agents, dispatching the message to each of them
-  #   if agents.options.chain == true, then process the agents sequentially,
+  #   if agents.chain == true, then process the agents sequentially,
   #   passing the output of one agent into the next one in the chain. if the
   #   last agent did not return anything, pass in the original message
   #
@@ -197,7 +248,11 @@ class Core:
   #TODO: actually implemet the "parallel"; use gevent to do this async
   #
     for agent in self.agents:
-      if Config.get('agents.options.chain'):
+      if Config.get('agents.chain'):
+      # use return False in agents to short-circuit chaining behavior
+        if last_return_value == False:
+          message = Message()
+
         last_return_value = agent.received(last_return_value or message)
       else:
         agent.received(message)

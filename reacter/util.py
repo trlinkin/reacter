@@ -4,6 +4,7 @@
 import time
 import re
 import zlib
+import sys
 from string import capwords
 from copy import deepcopy
 from socket import gethostname
@@ -70,7 +71,11 @@ class Util:
   @classmethod
   def log(self, severity, *message):
   # stringify all arguments and join them with a space
-    print ' '.join(map(lambda i: str(i), list(message[0])))
+    sys.stderr.write(' '.join(map(lambda i: str(i), list(message[0])))+'\n')
+
+  @classmethod
+  def output(self, *message):
+    sys.stdout.write(' '.join(map(lambda i: str(i), list(message[0])))+'\n')
 
   @classmethod
   def trace(self, *message):

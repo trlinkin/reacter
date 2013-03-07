@@ -7,7 +7,7 @@ import yaml
 from util import Util
 
 class Config:
-  DEFAULT_CONFIG_PATH=['./', '~/.reacter', '/etc/reacter']
+  DEFAULT_CONFIG_PATH=['~/.reacter', '/etc/reacter']
   DEFAULT_CONFIG_NAME='reacter.yaml'
   DEFAULT_EMPTY_CONFIG={
     'reacter': {}
@@ -48,33 +48,35 @@ class Config:
   @classmethod
   def process_config(self):
   # LOAD supplemental per-agent configurations
-    for agent in self.get('agents.options.enabled', []):
-      agent_path = self.get('agents.options.path', [], as_list=True)
-      agent_custom = self.get('agents.%s.config' % agent, [], as_list=True)
+    for agent in self.get('agents.enabled', []):
+      agent_path = self.get('agents.path', [], as_list=True)
+      agent_custom = self.get('agents.config.%s.include' % agent, [], as_list=True)
 
     # add agent module path(s)
-      for p in self.get('options.paths.agents', [], as_list=True):
+      for p in self.get('agents.path', [], as_list=True):
         agent_path.insert(0, p)
 
     # look in well known locations
       agent_configs = [
         ('/etc/reacter/agents/%s.yaml' % agent),
-        os.path.expanduser('~/.reacter/agents/%s.yaml' % agent),
-        './agents/%s.yaml' % agent,
+        os.path.expanduser('~/.reacter/agents/%s.yaml' % agent)
       ]
 
-    # append additional search paths 
+    # append additional search paths
       agent_configs.extend(map(lambda i: os.path.expanduser(os.path.join(i, '%s.yaml' % agent)), agent_path))
 
     # append custom paths as more specific than default paths
-      agent_configs.extend(agent_custom)
+      if agent_custom:
+        agent_configs.extend(agent_custom)
 
     # attempt to load supplemental configs from:
     #   /etc/reacter/agents/<agent>.yaml
     #   ~/.reacter/agents/<agent>.yaml
-    #   ./agents/<agents>.yaml
-    #   <path in config> (if supplied)
-    #
+
+      Util.debug("Searching for supplemental configs for %s in:" % agent)
+      for i in agent_configs:
+        Util.debug(i)
+
       for agent_config in agent_configs:
         if agent_config:
         # recursively include .yaml files in a supplied directory
@@ -100,10 +102,10 @@ class Config:
       Util.debug('Loading supplemental config: %s' % config)
       try:
         sc = yaml.safe_load(file(config, 'r'))
-        self._config = Util.dict_merge(self._config, sc, self.get('options.config.allow_override', True))
+        self._config = Util.dict_merge(self._config, sc, self.get('options.allow_override', True))
 
       except IOError as e:
-        Util.warn('Could not load supplemental configuration: %s' % e.message)  
+        Util.warn('Could not load supplemental configuration: %s' % e.message)
 
     else:
       Util.warn('Could not find supplemental configuration %s, skipping' % config)

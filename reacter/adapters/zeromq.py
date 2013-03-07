@@ -2,7 +2,7 @@
 # ZeromqAdapter
 #
 import os
-import yaml
+import json
 import zmq
 from reacter.util import Util
 from reacter.config import Config
@@ -63,12 +63,12 @@ class ZeromqAdapter(adapter.Adapter):
 
 
   def send(self, message):
-    self._queue.send('---\n' + yaml.dump(message.data))
+    self._queue.send(json.dumps(message.data))
 
 
   def poll(self):
     message = self._queue.recv()
-    return Message(yaml.safe_load(message))
+    return Message(message)
 
 
   def disconnect(self):

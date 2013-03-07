@@ -52,7 +52,7 @@ class Reacter:
       help='The location of the PID file',
       metavar='PIDFILE',
       default=Util.DEFAULT_PIDFILE)
-    
+
     p.add_option('-R', '--no-retry',
       dest='no_retry_connection',
       help='Do not automatically attempt to reconnect to the message queue on failed attempts',
@@ -68,7 +68,7 @@ class Reacter:
     (self.opts, self.args) = p.parse_args()
 
   def process_config(self):
-    self.agents = Config.get('agents.options.enabled', [])
+    self.agents = Config.get('agents.enabled', [])
 
   def process_cli_args(self):
     cli_agents = Util.parse_agents(self.opts.agents)
@@ -93,7 +93,7 @@ class Reacter:
     self.core = Core()
 
   # set the backend adapter
-    self.core.set_adapter(self.opts.adapter or Config.get('adapter.name'))
+    self.core.set_adapter(self.opts.adapter or Config.get('adapter.type'))
 
   # add all agents
     for agent in self.agents:
@@ -101,8 +101,8 @@ class Reacter:
         Util.info('Registering agent:', agent)
         self.core.add_agent(agent)
 
-    if Config.get('agents.options.chain'):
-      Util.info('Chain mode activated: messages will be sequentially delivered to agents in the order: %s' % ' -> '.join(self.agents))
+    if Config.get('agents.chain'):
+      Util.info('Chain mode activated: messages will be sequentially delivered to agents: %s' % ' -> '.join(self.agents))
 
   # connect to message queue
     if self.core.connect(
@@ -123,16 +123,16 @@ class Reacter:
         self.initialize_daemon()
 
         while self.running:
-          try:
+          #try:
             self.core.listen()
 
-          except Exception, e:
-            import traceback, os.path
-            tb = traceback.extract_stack()[-1]
+          # except Exception, e:
+          #   import traceback, os.path
+          #   tb = traceback.extract_stack()[-1]
 
-            Util.error('[!!]', type(e).__name__.split('.')[-1],
-              'in %s:%s' %(os.path.basename(tb[0]), str(tb[1])),
-              ': %s' % (e.message or ''))
+          #   Util.error('[!!]', type(e).__name__.split('.')[-1],
+          #     'in %s:%s' %(os.path.basename(tb[0]), str(tb[1]))+':',
+          #     (e.message or ''))
 
     else:
       sys.exit(1)
