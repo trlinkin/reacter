@@ -78,6 +78,9 @@ class Reacter:
 
   def initialize_daemon(self):
     signal.signal(signal.SIGINT, self.signal_handler)
+    signal.signal(signal.SIGUSR1, self.signal_handler)
+
+    Util.info("Reacter running: PID %s" % str(os.getpid()))
 
     # pid = open(self.opts.pidfile, 'w')
     # pid.write(str(os.getpid())+'\n')
@@ -101,9 +104,6 @@ class Reacter:
         Util.info('Registering agent:', agent)
         self.core.add_agent(agent)
 
-    if Config.get('agents.chain'):
-      Util.info('Chain mode activated: messages will be sequentially delivered to agents: %s' % ' -> '.join(self.agents))
-
   # connect to message queue
     if self.core.connect(
       retry=not(self.opts.no_retry_connection),
@@ -123,25 +123,22 @@ class Reacter:
         self.initialize_daemon()
 
         while self.running:
-          #try:
+          try:
             self.core.listen()
-
-          # except Exception, e:
-          #   import traceback, os.path
-          #   tb = traceback.extract_stack()[-1]
-
-          #   Util.error('[!!]', type(e).__name__.split('.')[-1],
-          #     'in %s:%s' %(os.path.basename(tb[0]), str(tb[1]))+':',
-          #     (e.message or ''))
+          except Exception, e:
+            pass
 
     else:
       sys.exit(1)
 
   def signal_handler(self, number, frame):
-    self.running = False
     Util.debug('SIGNAL', number, frame)
 
-    if number == signal.SIGINT:
-      self.core.disconnect()
+    if number == signal.SIGUSR1:
+      Util.info('Reloading configuration...')
+      Config.load(self.opts.config)
 
-    sys.exit(0)
+    if number == signal.SIGINT:
+      self.running = False
+      self.core.disconnect()
+      sys.exit(0)
