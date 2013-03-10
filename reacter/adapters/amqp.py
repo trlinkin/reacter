@@ -41,7 +41,7 @@ class AmqpAdapter(adapter.Adapter):
     self._channel = self._connection.channel()
 
   # create queue
-    Util.debug('amqp: Creating queue %s with options: %s %s %s %s' % (
+    Util.debug("amqp: Creating queue '%s' with options: %s %s %s %s" % (
       self._queue,
       ('TTL' if self.config.get('ttl')        else ''),
       ('DUR' if self.config.get('durable')    else ''),
@@ -67,21 +67,24 @@ class AmqpAdapter(adapter.Adapter):
 
   def poll(self):
     messages = []
+    acktag = None
     rv = []
 
     for frame, properties, body in self._channel.consume(self._queue):
     # add message
       messages.append(body)
 
-    # ack the message
-      self._channel.basic_ack(frame.delivery_tag)
-
       if len(messages) > (self.config.get('pollsize') or AMQP_DEFAULT_POLLSIZE):
+        acktag = frame.delivery_tag
         break
 
 
     for message in Message.parse(messages):
       rv.append(message)
+
+  # acknowledge up to and including <acktag>
+    if acktag:
+      self._channel.basic_ack(acktag, True)
 
     return rv
 

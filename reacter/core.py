@@ -167,8 +167,8 @@ class Core:
         self.dispatch_message(Util.get_event_message('disconnected', 'error'))
         break
 
-      #except Exception as e:
-      #  raise adapter.AdapterConnectionFaulted(e)
+      except Exception as e:
+        raise adapter.AdapterConnectionFaulted(e)
 
 
   def wait_connect(self):
@@ -199,21 +199,13 @@ class Core:
     ): return None
 
   # iterate through all agents, dispatching the message to each of them
-  #   if agents.chain == true, then process the agents sequentially,
-  #   passing the output of one agent into the next one in the chain. if the
-  #   last agent did not return anything, pass in the original message
-  #
-  #   else, process them in parallel, passing the original message to all
-  #   agents simultaneously
-  #
-  #TODO: actually implemet the "parallel"; use gevent to do this async
+  #   process the agents sequentially, passing the output of one agent into the
+  #   next one in the chain.
+  #   * if the last agent did not return anything, pass in the original message
+  #   * if the last agent returned False, pass an empty Message to the next one
   #
     for agent in self.agents:
-      if Config.get('agents.chain'):
-      # use return False in agents to short-circuit chaining behavior
-        if last_return_value == False:
-          message = Message()
+      if last_return_value == False:
+        message = Message()
 
-        last_return_value = agent.received(last_return_value or message)
-      else:
-        agent.received(message)
+      last_return_value = agent.received(last_return_value or message)
