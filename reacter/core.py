@@ -62,48 +62,9 @@ class Core:
 
 
   def send(self, body):
-    messages = []
-
-  # load all input messages
-    if isinstance(body, basestring):
-    # cheesy JSON autodetect
-      if body[0] == '{' or body[0] == '[':
-        m = json.loads(body)
-
-        if not isinstance(m,list):
-          messages = [m]
-
-    # OpenTSDB formatted string
-      elif body.upper()[0:4] == 'PUT ':
-        for line in body:
-          line = line.split(' ')
-
-        # expose TSDB tags as attributes
-          attrs = {}
-          for a in line[4:-1]:
-            a = a.split('=', 1)
-            attrs[a[0]] = a[1]
-
-          messages.append({
-            'metric':     line[1],
-            'time':       (int(line[2])*1000),
-            'value':      float(line[3]),
-            'attributes': attrs
-          })
-
-    # Graphite formatted string
-      else:
-        for line in body:
-          line = line.split(' ', 3)
-          messages.append({
-            'metric': line[0],
-            'value':  float(line[1]),
-            'time':   (int(line[2])*1000)
-          })
-
   # send all messages
-    for message in messages:
-      self.adapter.send(Message(message))
+    for message in Message.parse(body):
+      self.adapter.send(message)
 
 # set adapter
   def set_adapter(self, name):
