@@ -7,22 +7,17 @@ layout: default
     <div class="readable">
       <h2>What is Reacter?</h2>
       <p>
-        Reacter is a service written in Python designed to consume structured data (YAML) from a message queue or other data source, apply a series of processing rules to that data, then forward the output to one or more destinations.
+        Reacter is a utility written in Ruby designed to consume data from one or more data sources, apply a series of processing rules to that data, then forward the output to one or more destinations.
       </p>
 
       <h4>Adaptable</h4>
       <p>
         Reacter can be customized using plugins, called <em>agents</em>, designed to work with message data.  The <a href="/reacter/docs/agents#agents">standard agents</a> provide the ability to manipulate the message's fields with regular expressions, conditionally execute scripts based on thresholds, and forward the output message onto popular systems such as Nagios and Graphite.  <a href="/reacter/docs/agents#creating-new-agents">Creating new agents</a> is extremely simple, so integrating new systems into Reacter is straightforward and easy.
-      </p>            
-
-      <h4>Scalable</h4>
-      <p>
-        Reacter can be easily scaled because each instance subscribes to a message queue.  Messages enter the queue from one or more publishers, which have no knowledge of the consumers.  Meanwhile, one or more consumers connect to the queue to receive messages.  Messages are distributed in a sequential or round-robin fashion such that one message goes to exactly one consumer.  This is in contrast to a topic-based queue where inbound messages are broadcast to all consumers.
       </p>
 
       <h4>Configurable</h4>
       <p>
-        Reacter's configuration is very robust and can be comprised of multiple files and directories.  This provides the flexibility for administrators to allow users to create their own configurations, while also maintaining appropriate privilege separation and security.  Specific files or entire directory trees can be included in the main configuration, allowing Reacter to be configured in a way that makes the most sense for your specific environment.  Reacter also provides sane defaults for most options so that configuration overhead and complexity can be kept to a minimum, favoring convention over detailed configuration.
+        Reacter's configuration is very robust and can be comprised of multiple files and directories.  This provides the flexibility for administrators to allow users to create their own configurations, while also maintaining appropriate privilege separation and security.  Specific files or entire directory trees can be included in the main configuration, allowing for custom configuration scenarios, including simple self-service monitoring subscription.  Reacter also provides sane defaults for most options so that configuration overhead and complexity can be kept to a minimum, favoring convention over detailed configuration.
       </p>
     </div>
 
@@ -91,7 +86,7 @@ layout: default
   <div class="span5 pipeline">
     <h2>Data Processing Pipeline</h2>
     <p>
-      
+
     </p>
     <p class="diagram">
       <img src="images/reacter-pipeline.png" />
