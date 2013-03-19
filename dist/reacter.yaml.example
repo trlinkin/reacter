@@ -1,19 +1,26 @@
 ---
-reacter:
-  options:
-    queue:
-      host: amq
-    # port: 61613
-    # name: /queue/monitoring/metrics
-#    config:
-#      allow_override: true
-#      paths:
-#        agents: 
+global:
+  adapter:
+    # ZeroMQ
+    # type: zeromq
+    # transport: tcp://*:6060
+
+    # AMQP
+    # type:       amqp
+    # hostname:   10.10.66.52
+    # username:   collectd
+    # password:   collectd
+    # vhost:      /metrics
+    # exchange:   collectd.fanout
+    # durable:    false
+    # exclusive:  false
+    # autodelete: true
+    # ttl:        30000
+ 
+    # Linux FIFO
+    #type:     file
+    #filename: testfifo
 
   agents:
-    options:
-      enabled: [logger, decider]
-      chain:   true
-
-    decider:
-      config: /home/ghetzel/src/github/outbrain/reacter/agents
+    path:    '~/src/github/outbrain/reacter-agents'
+    enabled: [decider, logger]
