@@ -7,10 +7,10 @@ global:
 
     # AMQP
     # type:       amqp
-    # hostname:   10.10.66.52
+    # hostname:   amq.example.com
     # username:   collectd
     # password:   collectd
-    # vhost:      /metrics
+    # vhost:      /monitoring
     # exchange:   collectd.fanout
     # durable:    false
     # exclusive:  false
