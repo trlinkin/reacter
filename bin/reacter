@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+#
+# reacter - a utility for consuming, transforming, and routing monitoring data from various sources
+#
+# DESCRIPTION
+#        This script creates a mirror of a source directory, manipulating
+#        path components based on rules defined in dirmangle.yaml.  The
+#        purpose of this is to provide links to (or copies of) data using
+#        an alternative directory tree.
+#
+#        -C, --config FILE
+#                The location of the configuration YAML to load
+#
+#        -o, --option NAME VALUE
+#                Set the option NAME to VALUE
+#
+#        -v, --verbosity LEVEL
+#                Set the log verbosity level [debug, info (default), warn, error, fatal]
+#
+# AUTHOR
+#        Gary Hetzel <garyhetzel@gmail.com>
+#
+require 'reacter'
+require 'optparse'
+
+class Reacter
+  class CLI
+    class<<self
+      def run()
+        @options = {}
+
+        (OptionParser.new do |opts|
+          opts.banner = "Usage: reacter [options]"
+
+        # -----------------------------------------------------------------------------
+          opts.on('-C', '--config FILE', 'Configuration YAML location') do |file|
+            if File.exists?(file)
+              @options[:configfile] = file
+            else
+              raise "Configuration file #{file} does not exist"
+            end
+          end
+
+        # -----------------------------------------------------------------------------
+          @options[:options] = {}
+          opts.on('-o', '--option NAME=VALUE', 'Set the option NAME to VALUE') do |pair|
+            name, value = pair.split('=', 2)
+            @options[:options].set(name.strip.chomp, value) unless name.empty?
+          end
+
+        # -----------------------------------------------------------------------------
+          opts.on('-v', '--verbosity LEVEL', 'Logging verbosity') do |level|
+            level = level.to_s.downcase
+
+            if ['debug', 'info', 'warn', 'error', 'fatal'].include?(level)
+              @options[:loglevel] = level.to_sym
+            end
+          end
+        end).parse!
+
+      # options parsed, pass them to a new Reacter
+        Reacter.start(@options)
+      end
+    end
+  end
+end
+
+Reacter::CLI.run()

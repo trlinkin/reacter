@@ -41,6 +41,12 @@ class Reacter
     # quit early for invalid rules
       return false unless (rule['threshold'] and rule['actions'])
 
+    # passthrough mode
+    #   if in passthrough mode, all messages that are present in the configuration
+    #   will be passed regardless of state.  this is useful in conjunction with
+    #   the relay agent to offload the decision making to another reacter instance
+      return message if (@config['options'] and @config['options']['passthrough'])
+
     # default return value: false
       rv = false
 

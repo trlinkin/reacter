@@ -16,7 +16,7 @@ class Reacter
       @_adapter = nil
       @_agents = []
 
-      Reacter.load_config()
+      Reacter.load_config(args.first || {})
 
       load_adapters()
       load_agents()
@@ -92,9 +92,9 @@ class Reacter
   end
 
   class<<self
-    def start()
+    def start(config={})
       EM.run do
-        reacter = EM.connect('127.0.0.1', 9000, Reacter::Core)
+        reacter = EM.connect('127.0.0.1', 9000, Reacter::Core, config[:options])
         reacter.run()
       end
     end
