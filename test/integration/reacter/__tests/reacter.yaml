@@ -1,3 +1,0 @@
-reacter:
-  options:
-    queue: {host: amq}
