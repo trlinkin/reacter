@@ -6,24 +6,17 @@ require 'reacter/agent'
 class Reacter
   class DeciderAgent < Agent
     class EmitAlert < Exception; end
-
   # local memory persistence mechanism for state tracking
     class MemoryPersist
       class<<self
-        def setup()
+        def setup(config={})
           @_alerts = {}
         end
 
         def init(source, metric)
         # initialize in-memory alert tracking (per source, per metric)
           @_alerts[source] ||= {}
-          @_alerts[source][metric] ||= ({
-            :count           => 1,
-            :last_state      => nil,
-            :last_seen       => nil,
-            :new_alert       => false,
-            :has_ever_failed => false
-          })
+          @_alerts[source][metric] ||= DEFAULT_PERSISTENCE_OBJECT
         end
 
         def get(source, metric, key)
@@ -38,18 +31,38 @@ class Reacter
 
   # redis persistence mechanism for shared state tracking
     class RedisPersist
-      #require 'redis'
+      require 'redis'
+      require 'hiredis'
+      require 'msgpack'
+
       class<<self
-        def setup()
+        def setup(config={})
+          @_redis = Redis.new({
+            :host   => config.get(:host),
+            :port   => config.get(:port),
+            :path   => config.get(:socket),
+            :driver => config.get(:driver, :hiredis).to_sym
+          })
+
+          @_ttl = config.get('ttl', 600)
         end
 
         def init(source, metric)
+          DEFAULT_PERSISTENCE_OBJECT.each do |key, value|
+            @_redis.multi do
+              @_redis.set("#{source}:#{metric}:#{key}", value.to_msgpack)
+            end
+          end
         end
 
         def get(source, metric, key)
+          MessagePack.unpack(@_redis.get("#{source}:#{metric}:#{key}"))
         end
 
         def set(source, metric, key, value)
+          k = "#{source}:#{metric}:#{key}"
+          @_redis.set(k, value.to_msgpack)
+          @_redis.expire(k, @_ttl)
         end
       end
     end
@@ -57,6 +70,14 @@ class Reacter
     STATES=[:okay, :warning, :critical]
     COMPARISONS=%w{not is above below}
     DEFAULT_PERSISTENCE='memory'
+    DEFAULT_PERSISTENCE_OBJECT=({
+      :count           => 1,
+      :last_state      => nil,
+      :last_seen       => nil,
+      :new_alert       => false,
+      :has_ever_failed => false,
+      :total_value     => nil
+    })
 
     def initialize()
       super
@@ -67,7 +88,7 @@ class Reacter
       end
 
       @_persistence = DeciderAgent.const_get(@config.get('options.persistence.type', DEFAULT_PERSISTENCE).capitalize+'Persist')
-      @_persistence.setup()
+      @_persistence.setup(@config.get('options.persistence', {}))
     end
 
     def received(message)
