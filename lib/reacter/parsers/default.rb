@@ -9,6 +9,10 @@ class Reacter
         def parse(message)
           nil
         end
+
+        def dump(message)
+          nil
+        end
       end
     end
   end

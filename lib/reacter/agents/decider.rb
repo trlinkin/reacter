@@ -7,8 +7,56 @@ class Reacter
   class DeciderAgent < Agent
     class EmitAlert < Exception; end
 
+  # local memory persistence mechanism for state tracking
+    class MemoryPersist
+      class<<self
+        def setup()
+          @_alerts = {}
+        end
+
+        def init(source, metric)
+        # initialize in-memory alert tracking (per source, per metric)
+          @_alerts[source] ||= {}
+          @_alerts[source][metric] ||= ({
+            :count           => 1,
+            :last_state      => nil,
+            :last_seen       => nil,
+            :new_alert       => false,
+            :has_ever_failed => false
+          })
+        end
+
+        def get(source, metric, key)
+          @_alerts[source][metric][key] rescue nil
+        end
+
+        def set(source, metric, key, value)
+          (@_alerts[source][metric][key] = value) rescue nil
+        end
+      end
+    end
+
+  # redis persistence mechanism for shared state tracking
+    class RedisPersist
+      #require 'redis'
+      class<<self
+        def setup()
+        end
+
+        def init(source, metric)
+        end
+
+        def get(source, metric, key)
+        end
+
+        def set(source, metric, key, value)
+        end
+      end
+    end
+
     STATES=[:okay, :warning, :critical]
     COMPARISONS=%w{not is above below}
+    DEFAULT_PERSISTENCE='memory'
 
     def initialize()
       super
@@ -18,7 +66,8 @@ class Reacter
         @_state_names[STATES[i]] = i
       end
 
-      @_alerts = {}
+      @_persistence = DeciderAgent.const_get(@config.get('options.persistence.type', DEFAULT_PERSISTENCE).capitalize+'Persist')
+      @_persistence.setup()
     end
 
     def received(message)
@@ -30,9 +79,12 @@ class Reacter
         return false unless @config['sources']['any']
       end
 
+      s = message.source
+      m = message.metric
+
     # build effective configuration rule for this message
-      general = (@config['sources']['any'][message.metric] or {} rescue {})
-      specific = (@config['sources'][message.source][message.metric] or {} rescue {})
+      general = (@config['sources']['any'][m] or {} rescue {})
+      specific = (@config['sources'][s][m] or {} rescue {})
       rule = specific.deep_merge!(general)
 
     # quit early for empty rules
@@ -50,15 +102,8 @@ class Reacter
     # default return value: false
       rv = false
 
-    # initialize in-memory alert tracking (per source, per metric)
-      @_alerts[message.source] ||= {}
-      @_alerts[message.source][message.metric] ||= ({
-        :count           => 1,
-        :last_state      => nil,
-        :last_seen       => nil,
-        :new_alert       => false,
-        :has_ever_failed => false
-      })
+    # initialize persistence for this source/metric
+      persist_init(s,m)
 
     # get current state of this message according to the rule
       state, comparison = state_of(message, rule)
@@ -66,24 +111,24 @@ class Reacter
       begin
         # a non-okay alert has occurred, this metric can now be said to have failed
           unless state == :okay
-            @_alerts[message.source][message.metric][:has_ever_failed] = true
+            persist_set(s,m, :has_ever_failed, true)
           end
 
         # the state has changed, reset counter
-          if @_alerts[message.source][message.metric][:last_state] != state
-            @_alerts[message.source][message.metric][:new_alert] = true
-            @_alerts[message.source][message.metric][:count] = 1
+          if persist_get(s,m, :last_state) != state
+            persist_set(s,m, :new_alert, true)
+            persist_set(s,m, :count, 1)
           end
 
           hits = ((rule['threshold'][state.to_s][hits] rescue rule['hits']) or rule['hits'] or 1).to_i
           persist = ((rule['threshold'][state.to_s]['persist'] === true) rescue false)
 
         # only raise every n alerts
-          if @_alerts[message.source][message.metric][:count] >= hits
+          if persist_get(s,m, :count) >= hits
           # raise the alert if it's new or if we're persistently reminding of alerts
-            if @_alerts[message.source][message.metric][:new_alert] or persist
+            if persist_get(s,m, :new_alert) or persist
             # only emit if this metric has ever failed
-              if @_alerts[message.source][message.metric][:has_ever_failed]
+              if persist_get(s,m, :has_ever_failed)
                 raise EmitAlert
               end
             end
@@ -99,12 +144,12 @@ class Reacter
         rv = message
 
       # alert is emitted, it's not new anymore
-        @_alerts[message.source][message.metric][:new_alert] = false
+        persist_set(s,m, :new_alert, false)
 
       ensure
-        @_alerts[message.source][message.metric][:count] += 1
-        @_alerts[message.source][message.metric][:last_state] = state
-        @_alerts[message.source][message.metric][:last_seen] = Time.now.to_i
+        persist_set(s,m, :count, persist_get(s,m, :count) + 1)
+        persist_set(s,m, :last_state, state)
+        persist_set(s,m, :last_seen, Time.now.to_i)
       end
 
       return rv
@@ -148,6 +193,18 @@ class Reacter
       else
         return false
       end
+    end
+
+    def persist_init(source, metric)
+      @_persistence.init(source, metric)
+    end
+
+    def persist_get(source, metric, key)
+      @_persistence.get(source, metric, key)
+    end
+
+    def persist_set(source, metric, key, value)
+      @_persistence.set(source, metric, key, value)
     end
   end
 end

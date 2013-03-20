@@ -4,10 +4,15 @@ class Reacter
   class Util
     class<<self
       require 'logger'
+      require 'socket'
 
       @@_logger = {
         :default => Logger.new(STDOUT)
       }
+
+      def signature(custom=nil)
+        [%x{hostname -f}, Process.pid, custom].compact.join(':')
+      end
 
       def log(message, severity=:info, log=:default)
         @@_logger[log] = Logger.new(STDOUT) unless @@_logger[log]

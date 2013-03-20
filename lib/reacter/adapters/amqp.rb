@@ -28,7 +28,7 @@ class Reacter
       @_exchange = @config.get(:exchange, '')
     end
 
-    def send(message)
+    def send(message, format=nil)
       false
     end
 

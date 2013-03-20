@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "reacter"
-  s.version     = "0.0.1"
+  s.version     = "0.0.2"
   s.date        = "2013-03-18"
   s.summary     = "Reacter monitoring processor"
   s.description = "A utility for consuming, transforming, and routing monitoring data from various sources"
@@ -27,10 +27,9 @@ Gem::Specification.new do |s|
   ]
 
   s.homepage    = "http://outbrain.github.com/reacter/"
-
-  # s.executables = [
-  #   "reacter"
-  # ]
+  s.executables = [
+    "reacter"
+  ]
 
   %w{
     eventmachine

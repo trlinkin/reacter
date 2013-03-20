@@ -18,6 +18,27 @@ class Reacter
             :attributes => Hash[message[4..-1].collect{|i| i.split('=',2) }]
           }
         end
+
+        def dump(message)
+          message = message.to_h if message.is_a?(Message)
+          return nil unless message.is_a?(Hash)
+          return nil unless message[:source]
+          return nil unless message[:metric]
+          return nil unless message[:value]
+          return nil unless message[:time]
+
+          attributes = {
+            :host => message[:source]
+          }.merge(message[:attributes] || {})
+
+          ([
+            'PUT',
+            message[:metric],
+            (message[:time] / 1000).to_i,
+            message[:value],
+            attributes.collect{|k,v| "#{k}=#{v}" }.join(' ')
+          ].join(' ')).strip
+        end
       end
     end
   end

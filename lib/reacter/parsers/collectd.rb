@@ -22,6 +22,22 @@ class Reacter
             :attributes => attributes
           }
         end
+
+        def dump(message)
+          message = message.to_h if message.is_a?(Message)
+          return nil unless message.is_a?(Hash)
+          return nil unless message[:source]
+          return nil unless message[:metric]
+          return nil unless message[:value]
+          return nil unless message[:time]
+
+          ([
+            'PUTVAL',
+            "#{message[:source]}/#{message[:metric]}",
+            (message[:attributes] || {}).collect{|k,v| "#{k}=#{v}"}.join(';'),
+            "#{(message[:time] / 1000).to_i}:#{message[:value]}"
+          ].join(' ')).strip
+        end
       end
     end
   end

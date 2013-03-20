@@ -14,8 +14,8 @@ class Reacter
     attr :config
     attr :type
 
-    def initialize()
-      @config = Reacter.get('global.adapter', {})
+    def initialize(config=nil)
+      @config = (config || Reacter.get('global.adapter', {}))
       @type = @config.get('type')
       Util.info("Loading adapter #{@type}...")
     end
@@ -27,12 +27,12 @@ class Reacter
 
   # implement: send a message suitable for consumption by an instance of reacter
   #            in listen mode
-    def send(message)
+    def send(message, format=nil)
       false
     end
 
   # implement: poll for a new message and return it
-    def poll()
+    def poll(&block)
       false
     end
 
@@ -42,11 +42,11 @@ class Reacter
     end
 
     class<<self
-      def create(type)
+      def create(type, config=nil)
         if type
           begin
             require "reacter/adapters/#{type}"
-            rv = (Reacter.const_get("#{type.capitalize}Adapter").new())
+            rv = (Reacter.const_get("#{type.capitalize}Adapter").new(config))
             return rv
 
           rescue LoadError

@@ -12,18 +12,33 @@ class Reacter
         @_stdin = true
       else
         @_stdin = false
-        @_input = File.open(File.expand_path(@config.get(:filename)), 'r+')
+
+        readfile = (@config.get('filename') || @config.get('file.read'))
+        writefile = @config.get('file.write')
+
+        @_input = File.open(File.expand_path(readfile), 'r+') if readfile
+        @_output = File.open(File.expand_path(writefile), 'a') if writefile
       end
     end
 
-    def send(message)
-      false
+    def send(message, format=nil)
+      if defined?(@_output)
+        message = Message.dump(message, format)
+        @_output.puts(message) if message
+        @_output.flush()
+      else
+        Util.warn("file: Attempting to send without a valid output file handle")
+      end
     end
 
     def poll(&block)
-      loop do
-        line = @_input.gets
-        yield Message.parse(line)
+      if @_input
+        loop do
+          line = @_input.gets
+          yield Message.parse(line)
+        end
+      else
+        Util.warn("file: Attempting to poll without a valid input file handle")
       end
     end
 

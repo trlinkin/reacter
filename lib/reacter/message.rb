@@ -5,6 +5,7 @@ class Reacter
   class Message
     require 'hashlib'
     DEFAULT_SOURCE_NAME='default'
+    DEFAULT_FORMAT=:json
 
     def initialize(message={})
       @_data = {
@@ -50,6 +51,20 @@ class Reacter
             @@_parsers[i.to_sym] = Message.const_get("#{i.capitalize}Parser")
           end
         end
+      end
+
+      def dump(message, format=nil)
+        load_parsers() unless defined?(@@_parsers)
+
+        if @@_parsers
+          format = DEFAULT_FORMAT unless format
+
+          if @@_parsers.has_key?(format.to_sym)
+            return @@_parsers[format.to_sym].dump(message)
+          end
+        end
+
+        return nil
       end
 
       def parse(body)

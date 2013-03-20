@@ -13,6 +13,12 @@ class Reacter
         def parse(message)
           ([*JSON.load(message)] rescue [])
         end
+
+        def dump(message)
+          message = message.to_h if message.is_a?(Message)
+          return nil unless message.is_a?(Hash)
+          JSON.dump(message)
+        end
       end
     end
   end
