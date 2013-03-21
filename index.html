@@ -18,7 +18,7 @@ layout: default
   <div class="span4 install">
     <h3><a href="/reacter/docs/quickstart#install">Install</a></h3>
     <p>
-      Install Reacter from <a target="_blank" href="#">RubyGems</a> (<code>gem install reacter</code>), and checkout a copy of the <a target="_blank" href="https://github.com/outbrain/reacter-agents">reacter-agents</a> repository.  You can also install Reacter using <a href="#">Puppet</a>, or directly from the <a href="/reacter/downloads">.deb</a> or <a href="/reacter/downloads">.rpm</a>
+      Install Reacter from <a target="_blank" href="#">RubyGems</a> (<code>gem install reacter</code>). You can also install Reacter using <a href="#">Puppet</a>, <a href="#">Chef</a>, or directly from the <a href="/reacter/downloads">.deb</a> or <a href="/reacter/downloads">.rpm</a> packages.
       <br />
       <br />
     </p>
@@ -26,14 +26,13 @@ layout: default
 
   <div class="span4 config">
     <h3><a href="/reacter/docs/quickstart#config">Configure</a></h3>
-    <p>Configure Reacter to handle incoming metrics. Reacter's agents can manipulate the incoming messages, format them, route them to another monitoring system, log them to a file, or prepare them for other agents to consume.</p>
+    <p>Configure Reacter to handle incoming metrics. Reacter's agents can manipulate the incoming messages, format them, log them to a file, or relay them to another instance of Reacter.</p>
   </div>
 
   <div class="span4 run">
     <h3><a href="/reacter/docs/quickstart#run">Run</a></h3>
     <p>
-      Start the <code>reacter</code> service and begin submitting metrics to your message queue or other intermediary data store.
-      <br />
+      Start <code>reacter</code> and begin submitting metrics.  When Reacter receives them, the data will be swiftly handled according to your exacting and detailed requirements.
       <br />
       <br />
     </p>

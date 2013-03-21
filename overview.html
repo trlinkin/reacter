@@ -7,79 +7,38 @@ layout: default
     <div class="readable">
       <h2>What is Reacter?</h2>
       <p>
-        Reacter is a utility written in Ruby designed to consume data from one or more data sources, apply a series of processing rules to that data, then forward the output to one or more destinations.
+        Reacter is a utility written in Ruby designed to consume monitoring data from one or more sources, apply a series of processing rules to that data, then forward the output to one or more destinations.
       </p>
 
-      <h4>Adaptable</h4>
+      <h4>Rationale</h4>
       <p>
-        Reacter can be customized using plugins, called <em>agents</em>, designed to work with message data.  The <a href="/reacter/docs/agents#agents">standard agents</a> provide the ability to manipulate the message's fields with regular expressions, conditionally execute scripts based on thresholds, and forward the output message onto popular systems such as Nagios and Graphite.  <a href="/reacter/docs/agents#creating-new-agents">Creating new agents</a> is extremely simple, so integrating new systems into Reacter is straightforward and easy.
+        Monitoring things is complex and time-consuming.  There have been many approaches to making monitoring easier to approach over the years, and many of them have gained various degrees of adoption.  Many monitoring systems bill themselves as "the" monolithic all-in-one solution, whereas others commit to knowing their domain and performing well within it.  However, for most non-trivial architectures, a combination of monitoring components is brought together to form the complete package.
       </p>
 
-      <h4>Configurable</h4>
       <p>
-        Reacter's configuration is very robust and can be comprised of multiple files and directories.  This provides the flexibility for administrators to allow users to create their own configurations, while also maintaining appropriate privilege separation and security.  Specific files or entire directory trees can be included in the main configuration, allowing for custom configuration scenarios, including simple self-service monitoring subscription.  Reacter also provides sane defaults for most options so that configuration overhead and complexity can be kept to a minimum, favoring convention over detailed configuration.
+        Modern IT operations teams are increasingly tried and tested not by how many servers they manage, but by how much data they can effectively (and quickly) process, filter, collate, and ultimately act on.  As systems start to number in the thousands and tens of thousands, this task goes from being difficult to downright impossible without good tooling.  Many great tools exist to make discovery and analysis easier, but they all have one thing in common: they need data to work well.  Unfortunately, there is no one accepted, de facto standard for how to format and transmit that data.  What we end up with is a mix of different systems.  Some of them are super effective at data collection, where others are fantastic at organizing and presenting raw data and turning into usable information.  But what about where those systems must inevitably meet?  More often than not the edges of non-cooperating monitoring software come together with duct tape and glue; be it a shell script, a clever Perl daemon, or some other re-purposed mechanism for getting one program to talk to another.
+        <br />
+        <br />
+        Reacter offers another option.
+      </p>
+
+
+      <h4>Architecture</h4>
+      <p>
+        Reacter operates on semi-structured data that originates from one or more sources.  Much like a database <a target="_blank" href="http://en.wikipedia.org/wiki/Extract,_transform,_load">ETL</a> tool, it works on the data it receives in stages.
+      </p>
+
+      <p>
+        Data is first read or otherwise pushed into Reacter using <i>adapters</i>.  Adapters are the point where data enters the program.  Adapters can listen on a network socket, start an HTTP server, bind to a message queue, or read from a file.  Once this data is in Reacter it is normalized using <i>parsers</i>.  Parsers convert data from its native format into a uniform structure that can be processed within Reacter (a <i>message</i>).
+      </p>
+
+      <p>
+        Messages are then processed through a highly-configurable series of <i>agents</i>.  Each agent is able to perform a certain set of tasks on a message.  Some agents merely receive the message and forward it somewhere else (the <code>relay</code> agent).  Some apply a set of rules for manipulating the message (the <code>mangle</code> agent).  And some use a more complex configuration to perform actions based on the content of the message (the <code>decider</code> agent).  These agents are all chained together to allow complex logic to be composed of simple, reusable components.
       </p>
     </div>
 
     <div class="readable">
-      <h2>Piecewise Monitoring: A Scenario</h2>
-      <p>
-        Let's say you have a monitoring infrastructure made up of a combination of several open source projects (e.g. Nagios, Graphite, collectd, StatsD), and one proprietary platform that you use to monitor your extensive virtualization deployment.  Each of these systems serves a different purpose, but together they hold the data necessary for you to discover, diagnose, and solve problems that develop in your environment.
-      </p>
 
-      <p>
-        The biggest problem you are facing at the moment is that integrating these systems is tricky and time consuming.  Among these challenges are:
-
-        <ul>
-          <li>
-            Your environment is growing quickly, and Nagios is starting to get outpaced by the volume of active checks being performed.
-          </li>
-
-          <li>
-            Using collectd has given you a great deal of per-node data, but there are some pieces of information that you would like to ignore entirely.  However, some of collectd's plugins do not provide the option to turn off these unwanted metrics.
-          </li>
-
-          <li>
-            You would like to explore the idea of altering the hierarchy as it appears in Graphite, as some users are finding it difficult to work with the structure as is.  Unfortunately, the source code to a legacy application that is generating a critical set of metrics was never received from the third party vendor, and getting it is an expensive proposition; the metric name cannot be easily changed.
-          </li>
-
-          <li>
-            Finally, you need to merge a subset of the data coming from the proprietary system into the tree of metrics created by collectd, having them show up in a logical and predictable place.
-          </li>
-        </ul>
-      </p>
-
-      <p>
-        This hectic scenario may sound like it is perfectly workable, solvable, and preventable &mdash; and, indeed, it is.  But you are one of a very small team of people tasked with keeping everything running, and you live and work by time.  Each of these problems can be attacked from different angles specific to the application, but that means possibly disruptive configuration changes, extensive testing, and ongoing maintenance.  For the hard-coded black boxes in your infrastructure, solving such problems almost certainly involves some kind of proxy script, screenscraper, or hacky cron job.
-      </p>
-
-      <p>
-        Reacter provides a simple solution to these problems by creating a monitoring pipeline.  Instead of your monitoring systems talking directly to each other in domain-specific, clunky, and inconsistent ways; they all talk to Reacter in the same way.  The up front work of getting all data sources to dump metrics in a <a href="/reacter/docs/messages">common format</a> allows future changes to the monitoring infrastructure to be managed from one place.  It lets you form a system where individual components don't depend on each other, and can be changed out for others without disrupting the entire ecosystem.
-      </p>
-
-      <p>
-        Here are some possible solutions to the above scenarios:
-
-        <ul>
-          <li>
-            Convert your Nagios active checks into passive checks, making it a push architecture as opposed to a polling architecture.  A <a href="/reacter/docs/addons#nagios-queue">very simple service</a> distributed with Reacter allows the output from Nagios service checks to enter the message queue.  Reacter would then determine whether the value submitted is in violation of a given threshold using the <a href="/reacter/docs/agents#decider">decider</a> agent.  For complex checks that have the threshold logic built into them, the message could pass through the decider agent without being altered.  Once the message contains the appropriate status and threshold information, Reacter can submit a passive check directly by using the External Command File or via the NSCA addon.<br /><br />
-
-            <strong>Note:</strong> Using this method would also make a multi-master Nagios setup straightforward, as passive checks do not depend on Nagios' state, but rather simply leverage its escalation model to determine the appropriate course of action for an already-generated alert from a third party.
-          </li>
-
-          <li>
-            Metrics can be selectively altered or dropped using the <a href="/reacter/docs/agents#mangle">mangle</a> agent, which lets you manipulate or remove metrics that match certain patterns.  You could drop all metrics that start with <em>"collectd\.load\..*"</em> from all machines, or from machines whose hostnames match a given pattern.
-          </li>
-
-          <li>
-            Also using the <em>mangle</em> agent, you can perform on-the-fly substitutions of metric names based on regular expressions and capture groups.  This would let you rewrite the name of the legacy metrics before they are processed by any other agents, and before they are forwarded on to Graphite.
-          </li>
-
-          <li>
-            The <em>mangle</em> agent would also let you rewrite metric names from the proprietary system such that they fall under the correct tree location from collectd.  Getting data from the proprietary system can be achieved by a custom adapter or external process that otherwise gets the observations into the message queue.  Reacter does not care how the data gets into the queue, it will process it all the same.
-          </li>
-        </ul>
-      </p>
     </div>
   </div>
 
