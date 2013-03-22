@@ -18,7 +18,6 @@ class Reacter
       end
 
       @output_format = @config.get(:format)
-      puts @output_format.inspect
     end
 
     def received(message)

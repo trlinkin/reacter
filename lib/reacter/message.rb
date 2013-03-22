@@ -40,6 +40,10 @@ class Reacter
     end
 
     class<<self
+      def format=(format)
+        @_format = format
+      end
+
       def load_parsers()
         unless defined?(@@_parsers)
           @@_parsers = {}
@@ -57,7 +61,7 @@ class Reacter
         load_parsers() unless defined?(@@_parsers)
 
         if @@_parsers
-          format = DEFAULT_FORMAT unless format
+          format = (@_format or DEFAULT_FORMAT) unless format
 
           if @@_parsers.has_key?(format.to_sym)
             return @@_parsers[format.to_sym].dump(message)
@@ -67,35 +71,48 @@ class Reacter
         return nil
       end
 
-      def parse(body)
+      def parse(body, format=nil)
         load_parsers()
+
+      # set format override if one was set
+        format = @_format unless format
 
       # split strings into lines
         body = body.lines if body.is_a?(String)
         messages = []
 
-        if body.respond_to?(:each)
-          body.each do |message|
-          # strings need to be detected and parsed
-            if message.is_a?(String)
-              next if message.strip.chomp.empty?
+      # format not specified, autodetect
+        if format.nil?
+          if body.respond_to?(:each)
+            body.each do |message|
+            # strings need to be detected and parsed
+              if message.is_a?(String)
+                next if message.strip.chomp.empty?
 
-            # use first parser that claims it can handle this string
-              @@_parsers.each do |name, parser|
-                if parser.detected?(message)
-                  #Util.debug("Using parser #{name}")
-                  m = parser.parse(message)
-                  (m.is_a?(Array) ? messages += m : messages << m)
-                  next
+              # use first parser that claims it can handle this string
+                @@_parsers.each do |name, parser|
+                  if parser.detected?(message)
+                    #Util.debug("Using parser #{name}")
+                    m = parser.parse(message)
+                    (m.is_a?(Array) ? messages += m : messages << m)
+                    next
+                  end
                 end
-              end
 
-          # hashes go directly into the stack
-            elsif message.is_a?(Hash)
-              messages << message
+            # hashes go directly into the stack
+              elsif message.is_a?(Hash)
+                messages << message
+              end
             end
           end
-
+        else
+        # format given, attempt to use it
+          begin
+            m = @@_parsers[format].parse(message)
+            (m.is_a?(Array) ? messages += m : messages << m)
+          rescue
+            raise "Error parsing format '#{format}'"
+          end
         end
 
         messages.collect{|i| Message.new(i) }

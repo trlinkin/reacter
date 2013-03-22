@@ -13,7 +13,7 @@ class Reacter
       super
 
       @_dispatch_queue = EM::Queue.new
-      @_adapter = nil
+      @_adapters = []
       @_agents = []
 
       Reacter.load_config(args.first || {})
@@ -26,15 +26,18 @@ class Reacter
       adapter_config = Reacter.get('global.adapter', nil)
 
       if adapter_config
-        type = adapter_config.get('type')
+        adapter_config = [adapter_config] if adapter_config.is_a?(Hash)
 
-        @_adapter = Adapter.create(type)
+        adapter_config.each do |adapter|
+          type = adapter.get('type')
 
-        if @_adapter
-          @_adapter.connect()
-        else
-          raise "Adapter '#{type}' not found, exiting"
-          exit 1
+          if (instance = Adapter.create(type, adapter))
+            instance.connect()
+            @_adapters << instance
+          else
+            raise "Adapter '#{type}' not found, exiting"
+            exit 1
+          end
         end
       else
         Util.fatal("No adapters specified, exiting")
@@ -55,8 +58,9 @@ class Reacter
     end
 
     def run()
-      Util.info("Start listening using #{@_adapter.type} adapter...")
-
+      @_adapters.each do |adapter|
+        Util.info("Start listening using #{adapter.type} adapter...")
+      end
 
     # agent message dispatch subprocess
       dispatch = proc do |messages|
@@ -73,9 +77,14 @@ class Reacter
 
     # enter polling loop
       begin
-        @_adapter.poll do |messages|
-          @_dispatch_queue.push(messages)
-          @_dispatch_queue.pop(dispatch)
+        @_adapters.each do |adapter|
+          poller = proc do
+            adapter.poll do |messages|
+              dispatch.call(messages)
+            end
+          end
+
+          EM.defer(poller)
         end
 
       rescue AdapterConnectionFailed => e

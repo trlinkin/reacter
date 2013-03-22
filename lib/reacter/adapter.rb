@@ -1,6 +1,7 @@
 #------------------------------------------------------------------------------#
 # Adapter
 #
+require 'eventmachine'
 require 'reacter/message'
 require 'reacter/config'
 require 'reacter/util'
