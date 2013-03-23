@@ -9,15 +9,18 @@ require 'reacter/util'
 class AdapterConnectionFailed < Exception; end
 class AdapterConnectionFaulted < Exception; end
 class AdapterConnectionClosed < Exception; end
+class AdapterExit < Exception; end
 
 class Reacter
   class Adapter
     attr :config
     attr :type
+    attr :enable
 
     def initialize(config=nil)
       @config = (config || Reacter.get('global.adapter', {}))
       @type = @config.get('type')
+      @enable = true
       Util.info("Loading adapter #{@type}...")
     end
 
@@ -39,7 +42,19 @@ class Reacter
 
   # implement: manual disconnect / cleanup
     def disconnect()
-      raise AdapterConnectionClosed
+      raise AdapterExit
+    end
+
+    def disable()
+      @enable = false
+    end
+
+    def enable()
+      @enable = true
+    end
+
+    def enabled?()
+      @enable
     end
 
     class<<self

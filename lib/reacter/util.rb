@@ -11,7 +11,7 @@ class Reacter
       }
 
       def signature(custom=nil)
-        ([%x{hostname -f}.strip.chomp, Process.pid]+[*custom]).compact.join(':')
+        ([%x{hostname -f}.strip.chomp, Process.pid.to_s(16).upcase]+[*custom]).compact.join(':')
       end
 
       def log(message, severity=:info, log=:default)

@@ -76,27 +76,43 @@ class Reacter
       end
 
     # enter polling loop
-      begin
-        @_adapters.each do |adapter|
-          poller = proc do
+      @_adapters.each do |adapter|
+        next unless adapter.enabled?
+
+        poller = proc do
+          begin
             adapter.poll do |messages|
               dispatch.call(messages)
             end
-          end
+          rescue AdapterConnectionFailed => e
+            Util.error("Adapter connection failed: #{e.message}")
 
-          EM.defer(poller)
+          rescue AdapterConnectionFaulted => e
+            Util.error("Adapter connection error: #{e.message}")
+
+          rescue AdapterConnectionClosed => e
+            Util.info("Adapter closed connection")
+
+          rescue AdapterExit => e
+            adapter.disable()
+          end
         end
 
-      rescue AdapterConnectionFailed => e
-        Util.error("Adapter connection failed: #{e.message}")
-
-      rescue AdapterConnectionFaulted => e
-        Util.error("Adapter connection error: #{e.message}")
-
-      rescue AdapterConnectionClosed => e
-        Util.info("Adapter closed connection")
-
+        EM.defer(poller)
       end
+
+      EM.add_periodic_timer(1) do
+
+      # exit if all adapters are disabled
+        if @_adapters.select{|i| i.enabled? }.empty?
+          Util.info("All adapters disabled, exiting")
+          stop()
+        end
+      end
+    end
+
+    def stop()
+      EM.stop_event_loop()
     end
   end
 

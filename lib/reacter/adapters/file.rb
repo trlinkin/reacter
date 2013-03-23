@@ -9,15 +9,15 @@ class Reacter
   class FileAdapter < Adapter
     def connect(args={})
       if @config.get(:filename) == 'stdin'
-        @_stdin = true
+        @_input = STDIN
       else
-        @_stdin = false
+        if (readfile = (@config.get('filename') || @config.get('file.read')))
+          @_input = File.open(File.expand_path(readfile), 'r+')
+        end
+      end
 
-        readfile = (@config.get('filename') || @config.get('file.read'))
-        writefile = @config.get('file.write')
-
-        @_input = File.open(File.expand_path(readfile), 'r+') if readfile
-        @_output = File.open(File.expand_path(writefile), 'a') if writefile
+      if (writefile = @config.get('file.write'))
+        @_output = File.open(File.expand_path(writefile), 'a')
       end
     end
 
@@ -34,6 +34,7 @@ class Reacter
     def poll(&block)
       if @_input
         loop do
+          disconnect() if @_input.eof?
           line = @_input.gets
           yield Message.parse(line)
         end
@@ -43,7 +44,7 @@ class Reacter
     end
 
     def disconnect()
-      raise AdapterConnectionClosed
+      raise AdapterExit
     end
 
   private
