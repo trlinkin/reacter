@@ -29,7 +29,6 @@ class Reacter
       adapter = @_adapter_cycle.next
 
       if adapter
-        Util.debug("Using adapter #{adapter.inspect}")
         message[:relayed_from] = @_signature unless (adapter.config['transparent'] === true)
         adapter.send(message, adapter.config['format'])
       else

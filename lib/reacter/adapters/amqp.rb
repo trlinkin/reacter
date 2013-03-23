@@ -22,7 +22,10 @@ class Reacter
 
       @_channel  = AMQP::Channel.new(@_connection)
       @_queue    = @_channel.queue(@config.get(:queue, DEFAULT_QUEUENAME), {
-        :auto_delete => @config.get(:autodelete, true)
+        :auto_delete => @config.get(:autodelete, true),
+        :arguments => {
+          'x-message-ttl' => @config.get(:ttl)
+        }.compact
       })
 
       @_exchange = @config.get(:exchange, '')
