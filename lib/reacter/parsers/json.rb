@@ -1,8 +1,8 @@
-require 'reacter/parsers/default'
+require 'reacter/parser'
 
 class Reacter
   class Message
-    class JsonParser < DefaultParser
+    class JsonParser < Parser
       class<<self
         require 'json'
 

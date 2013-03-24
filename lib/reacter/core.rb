@@ -36,7 +36,6 @@ class Reacter
             @_adapters << instance
           else
             raise "Adapter '#{type}' not found, exiting"
-            exit 1
           end
         end
       else
@@ -80,21 +79,8 @@ class Reacter
         next unless adapter.enabled?
 
         poller = proc do
-          begin
-            adapter.poll do |messages|
-              dispatch.call(messages)
-            end
-          rescue AdapterConnectionFailed => e
-            Util.error("Adapter connection failed: #{e.message}")
-
-          rescue AdapterConnectionFaulted => e
-            Util.error("Adapter connection error: #{e.message}")
-
-          rescue AdapterConnectionClosed => e
-            Util.info("Adapter closed connection")
-
-          rescue AdapterExit => e
-            adapter.disable()
+          adapter.poll do |messages|
+            dispatch.call(messages)
           end
         end
 

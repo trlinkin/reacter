@@ -1,8 +1,8 @@
-require 'reacter/parsers/default'
+require 'reacter/parser'
 
 class Reacter
   class Message
-    class GraphiteParser < DefaultParser
+    class GraphiteParser < Parser
       class<<self
       # Graphite
       #   |metric-----|value|epoch----|

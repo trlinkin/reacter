@@ -1,8 +1,8 @@
-require 'reacter/parsers/default'
+require 'reacter/parser'
 
 class Reacter
   class Message
-    class TsdbParser < DefaultParser
+    class TsdbParser < Parser
       class<<self
         def detected?(message)
           return (message.upcase[0..4] == 'PUT ')

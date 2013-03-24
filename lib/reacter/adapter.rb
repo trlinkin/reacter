@@ -6,12 +6,14 @@ require 'reacter/message'
 require 'reacter/config'
 require 'reacter/util'
 
-class AdapterConnectionFailed < Exception; end
-class AdapterConnectionFaulted < Exception; end
-class AdapterConnectionClosed < Exception; end
-class AdapterExit < Exception; end
 
 class Reacter
+  class AdapterConnectionFailed < Exception; end
+  class AdapterConnectionFaulted < Exception; end
+  class AdapterConnectionClosed < Exception; end
+  class AdapterExit < Exception; end
+
+
   class Adapter
     attr :config
     attr :type
@@ -42,7 +44,7 @@ class Reacter
 
   # implement: manual disconnect / cleanup
     def disconnect()
-      raise AdapterExit
+      @_connected = false
     end
 
     def disable()

@@ -1,8 +1,8 @@
-require 'reacter/parsers/default'
+require 'reacter/parser'
 
 class Reacter
   class Message
-    class CollectdParser < DefaultParser
+    class CollectdParser < Parser
       class<<self
         def detected?(message)
           (message[0..6] == 'PUTVAL ')
