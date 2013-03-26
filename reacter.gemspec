@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "reacter"
-  s.version     = "0.0.7"
+  s.version     = "0.0.8"
   s.date        = "2013-03-18"
   s.summary     = "Reacter monitoring processor"
   s.description = "A utility for consuming, transforming, and routing monitoring data from various sources"
@@ -15,6 +15,7 @@ Gem::Specification.new do |s|
     "lib/reacter/agents/decider.rb",
     "lib/reacter/agents/logger.rb",
     "lib/reacter/agents/relay.rb",
+    "lib/reacter/agents/runner.rb",
     "lib/reacter/config.rb",
     "lib/reacter/core.rb",
     "lib/reacter/message.rb",
@@ -35,6 +36,7 @@ Gem::Specification.new do |s|
     eventmachine
     deep_merge
     hashlib
+    hiredis
   }.each do |g|
     s.add_runtime_dependency g
   end
