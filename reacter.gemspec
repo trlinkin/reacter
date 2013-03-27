@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "reacter"
-  s.version     = "0.0.8"
+  s.version     = "0.0.9"
   s.date        = "2013-03-18"
   s.summary     = "Reacter monitoring processor"
   s.description = "A utility for consuming, transforming, and routing monitoring data from various sources"
@@ -13,6 +13,7 @@ Gem::Specification.new do |s|
     "lib/reacter/adapters/file.rb",
     "lib/reacter/agent.rb",
     "lib/reacter/agents/decider.rb",
+    "lib/reacter/agents/filter.rb",
     "lib/reacter/agents/logger.rb",
     "lib/reacter/agents/relay.rb",
     "lib/reacter/agents/runner.rb",

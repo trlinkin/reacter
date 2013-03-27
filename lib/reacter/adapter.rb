@@ -34,7 +34,7 @@ class Reacter
   # implement: send a message suitable for consumption by an instance of reacter
   #            in listen mode
     def send(message, format=nil)
-      false
+      raise "Send not implemented"
     end
 
   # implement: poll for a new message and return it
